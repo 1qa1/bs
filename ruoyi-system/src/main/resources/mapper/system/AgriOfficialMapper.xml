@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriOfficialMapper">
+
+    <resultMap type="AgriOfficial" id="AgriOfficialResult">
+        <result property="id"    column="id"    />
+        <result property="oid"    column="oid"    />
+        <result property="pid"    column="pid"    />
+        <result property="reportTime"    column="report_time"    />
+        <result property="reportResult"    column="report_result"    />
+        <result property="reportUploadsUrl"    column="report_uploads_url"    />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp"    column="time_stamp"    />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriOfficialVo">
+        select id, oid, pid, report_time, report_result, report_uploads_url, tx_hash, time_stamp, status from agri_official
+    </sql>
+
+    <select id="selectAgriOfficialList" parameterType="AgriOfficial" resultMap="AgriOfficialResult">
+        <include refid="selectAgriOfficialVo"/>
+        <where>
+            <if test="oid != null  and oid != ''"> and oid = #{oid}</if>
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+        </where>
+    </select>
+
+    <select id="selectAgriOfficialById" parameterType="Long" resultMap="AgriOfficialResult">
+        <include refid="selectAgriOfficialVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectOfficialByPid" parameterType="string" resultMap="AgriOfficialResult">
+        <include refid="selectAgriOfficialVo"/>
+        where pid = #{pid}
+    </select>
+    <select id="selectOfficialByOid" parameterType="string" resultMap="AgriOfficialResult">
+        <include refid="selectAgriOfficialVo"/>
+        where oid = #{oid}
+    </select>
+
+    <insert id="insertAgriOfficial" parameterType="AgriOfficial" useGeneratedKeys="true" keyProperty="id">
+        insert into agri_official
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="oid != null">oid,</if>
+            <if test="pid != null">pid,</if>
+            <if test="reportTime != null">report_time,</if>
+            <if test="reportResult != null">report_result,</if>
+            <if test="reportUploadsUrl != null">report_uploads_url,</if>
+            <if test="status != null">status,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="oid != null">#{oid},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="reportTime != null">#{reportTime},</if>
+            <if test="reportResult != null">#{reportResult},</if>
+            <if test="reportUploadsUrl != null">#{reportUploadsUrl},</if>
+            <if test="status != null">#{status},</if>
+        </trim>
+    </insert>
+
+    <update id="updateAgriOfficial" parameterType="AgriOfficial">
+        update agri_official
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="oid != null">oid = #{oid},</if>
+            <if test="pid != null">pid = #{pid},</if>
+            <if test="reportTime != null">report_time = #{reportTime},</if>
+            <if test="reportResult != null">report_result = #{reportResult},</if>
+            <if test="reportUploadsUrl != null">report_uploads_url = #{reportUploadsUrl},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriOfficialById" parameterType="Long">
+        delete from agri_official where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriOfficialByIds" parameterType="String">
+        delete from agri_official where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteOfficialByPid" parameterType="string">
+        delete from agri_official where pid = #{pid}
+    </delete>
+</mapper>

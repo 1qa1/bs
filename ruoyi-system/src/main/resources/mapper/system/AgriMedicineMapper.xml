@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriMedicineMapper">
+    
+    <resultMap type="AgriMedicine" id="AgriMedicineResult">
+        <result property="id"    column="id"    />
+        <result property="mid"    column="mid"    />
+        <result property="gid"    column="gid"    />
+        <result property="pid"    column="pid"    />
+        <result property="name"    column="name"    />
+        <result property="batchNo"    column="batch_no"    />
+        <result property="useTime"    column="use_time"    />
+        <result property="amount"    column="amount"    />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp"    column="time_stamp"    />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriMedicineVo">
+        select id, mid, gid, pid, name, batch_no, use_time, amount, tx_hash, time_stamp, status from agri_medicine
+    </sql>
+
+    <select id="selectAgriMedicineList" parameterType="AgriMedicine" resultMap="AgriMedicineResult">
+        <include refid="selectAgriMedicineVo"/>
+        <where>  
+            <if test="mid != null  and mid != ''"> and mid = #{mid}</if>
+            <if test="gid != null  and gid != ''"> and gid = #{gid}</if>
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectAgriMedicineById" parameterType="Long" resultMap="AgriMedicineResult">
+        <include refid="selectAgriMedicineVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectMedicineByGid" parameterType="string" resultMap="AgriMedicineResult">
+        <include refid="selectAgriMedicineVo"/>
+        where gid = #{gid}
+    </select>
+    <select id="selectMedicineByPid" parameterType="String" resultMap="AgriMedicineResult">
+        <include refid="selectAgriMedicineVo"/>
+        where pid = #{pid}
+    </select>
+    <select id="selectMedicineByMid"  parameterType="string" resultType="AgriMedicine">
+        <include refid="selectAgriMedicineVo"/>
+        where mid = #{mid}
+    </select>
+
+    <insert id="insertAgriMedicine" parameterType="AgriMedicine">
+        insert into agri_medicine
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="mid != null">mid,</if>
+            <if test="gid != null">gid,</if>
+            <if test="pid != null">pid,</if>
+            <if test="name != null">name,</if>
+            <if test="batchNo != null">batch_no,</if>
+            <if test="useTime != null">use_time,</if>
+            <if test="amount != null">amount,</if>
+            <if test="status != null">status,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="mid != null">#{mid},</if>
+            <if test="gid != null">#{gid},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="name != null">#{name},</if>
+            <if test="batchNo != null">#{batchNo},</if>
+            <if test="useTime != null">#{useTime},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="status != null">#{status},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAgriMedicine" parameterType="AgriMedicine">
+        update agri_medicine
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="mid != null">mid = #{mid},</if>
+            <if test="gid != null">gid = #{gid},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="batchNo != null">batch_no = #{batchNo},</if>
+            <if test="useTime != null">use_time = #{useTime},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriMedicineById" parameterType="Long">
+        delete from agri_medicine where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriMedicineByIds" parameterType="String">
+        delete from agri_medicine where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteMedicineByGid" parameterType="string">
+        delete from agri_medicine where gid = #{gid}
+    </delete>
+</mapper>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriProductMapper">
+
+    <resultMap type="AgriProduct" id="AgriProductResult">
+        <result property="id"    column="id"    />
+        <result property="pid"    column="pid"    />
+        <result property="name"    column="name"    />
+        <result property="onlyCode"  column="only_code" />
+        <result property="number"    column="number"    />
+        <result property="tp"        column="tp"    />
+        <result property="plantCity" column="plant_city" />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp" column="time_stamp" />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriProductVo">
+        select id, pid, name, only_code, number, tp, plant_city, tx_hash, time_stamp, status from agri_product
+    </sql>
+
+
+    <select id="selectAgriProductList" parameterType="AgriProduct" resultMap="AgriProductResult">
+        <include refid="selectAgriProductVo"/>
+        <where>  
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+            <!-- 使用 concat 进行模糊查询 -->
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="onlyCode != null  and onlyCode != ''"> and only_code = #{onlyCode}</if>
+        </where>
+    </select>
+    
+    <select id="selectAgriProductById" parameterType="Long" resultMap="AgriProductResult">
+        <include refid="selectAgriProductVo"/>
+        where id = #{id}
+    </select>
+    
+<!--    通过pid将其全部查出来-->
+    <select id="selectProductByPid" parameterType="string" resultType="AgriProduct">
+        <include refid="selectAgriProductVo" />
+        where pid = #{pid}
+    </select>
+
+    <insert id="insertAgriProduct" parameterType="AgriProduct">
+        insert into agri_product
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="pid != null">pid,</if>
+            <if test="name != null">name,</if>
+            <if test="onlyCode != null">only_code,</if>
+            <if test="number != null">number,</if>
+            <if test="tp != null">tp,</if>
+            <if test="plantCity != null">plant_city,</if>
+            <if test="txHash != null">tx_hash,</if>
+            <if test="timeStamp != null">time_stamp,</if>
+            <if test="status != null">status,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="name != null">#{name},</if>
+            <if test="onlyCode != null">#{onlyCode},</if>
+            <if test="number != null">#{number},</if>
+            <if test="tp != null">#{tp},</if>
+            <if test="plantCity != null">#{plantCity},</if>
+            <if test="txHash != null">#{txHash},</if>
+            <if test="timeStamp != null">#{timeStamp},</if>
+            <if test="status != null">#{status},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAgriProduct" parameterType="AgriProduct">
+        update agri_product
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="pid != null">pid = #{pid},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="onlyCode != null">only_code = #{onlyCode},</if>
+            <if test="number != null">number = #{number},</if>
+            <if test="tp != null">tp = #{tp},</if>
+            <if test="plantCity != null">plant_city = #{plantCity},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriProductById" parameterType="Long">
+        delete from agri_product where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriProductByIds" parameterType="String">
+        delete from agri_product where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

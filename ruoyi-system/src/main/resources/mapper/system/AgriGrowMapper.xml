@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriGrowMapper">
+    
+    <resultMap type="AgriGrow" id="AgriGrowResult">
+        <result property="id"    column="id"    />
+        <result property="gid"    column="gid"    />
+        <result property="pid"    column="pid"    />
+        <!-- 新增字段映射 -->
+        <result property="plantTime"    column="plant_time"    />
+        <result property="reapTime"    column="reap_time"    />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp"    column="time_stamp"    />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriGrowVo">
+        select id, gid, pid, plant_time, reap_time, tx_hash, time_stamp, status from agri_grow
+    </sql>
+
+    <select id="selectAgriGrowList" parameterType="AgriGrow" resultMap="AgriGrowResult">
+        <include refid="selectAgriGrowVo"/>
+        <where>  
+            <if test="gid != null  and gid != ''"> and gid = #{gid}</if>
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+            <if test="status != null"> and status = #{status}</if>
+        </where>
+    </select>
+    
+    <select id="selectAgriGrowById" parameterType="Long" resultMap="AgriGrowResult">
+        <include refid="selectAgriGrowVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectGrowByPid"  parameterType="string" resultMap="AgriGrowResult">
+        <include refid="selectAgriGrowVo"/>
+        where pid = #{pid}
+    </select>
+    <select id="selectGrowByGid" parameterType="string" resultType="AgriGrow">
+        <include refid="selectAgriGrowVo"/>
+        where gid = #{gid}
+    </select>
+
+    <insert id="insertAgriGrow" parameterType="AgriGrow" useGeneratedKeys="true" keyProperty="id">
+        insert into agri_grow
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="gid != null">gid,</if>
+            <if test="pid != null">pid,</if>
+            <if test="plantTime != null">plant_time,</if>
+            <if test="reapTime != null">reap_time,</if>
+            <if test="txHash != null">tx_hash,</if>
+            <if test="timeStamp != null">time_stamp,</if>
+            <if test="status != null">status,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="gid != null">#{gid},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="plantTime != null">#{plantTime},</if>
+            <if test="reapTime != null">#{reapTime},</if>
+            <if test="txHash != null">#{txHash},</if>
+            <if test="timeStamp != null">#{timeStamp},</if>
+            <if test="status != null">#{status},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAgriGrow" parameterType="AgriGrow">
+        update agri_grow
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="gid != null">gid = #{gid},</if>
+            <if test="pid != null">pid = #{pid},</if>
+            <if test="plantTime != null">plant_time = #{plantTime},</if>
+            <if test="reapTime != null">reap_time = #{reapTime},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriGrowById" parameterType="Long">
+        delete from agri_grow where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriGrowByIds" parameterType="String">
+        delete from agri_grow where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteGrowByPid" parameterType="string">
+        delete from agri_grow where pid = #{pid}
+    </delete>
+</mapper>

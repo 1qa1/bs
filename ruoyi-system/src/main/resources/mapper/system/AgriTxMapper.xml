@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriTxMapper">
+    
+    <resultMap type="AgriTx" id="AgriTxResult">
+        <result property="pid"    column="pid"    />
+        <result property="txid"    column="txid"    />
+        <result property="timestamp"    column="timestamp"    />
+    </resultMap>
+
+    <sql id="selectAgriTxVo">
+        select pid, txid, timestamp from agri_tx
+    </sql>
+
+    <select id="selectAgriTxList" parameterType="AgriTx" resultMap="AgriTxResult">
+        <include refid="selectAgriTxVo"/>
+        <where>  
+            <if test="txid != null  and txid != ''"> and txid = #{txid}</if>
+            <if test="timestamp != null  and timestamp != ''"> and timestamp = #{timestamp}</if>
+        </where>
+    </select>
+    
+    <select id="selectAgriTxByPid" parameterType="String" resultMap="AgriTxResult">
+        <include refid="selectAgriTxVo"/>
+        where pid = #{pid}
+    </select>
+        
+    <insert id="insertAgriTx" parameterType="AgriTx">
+        insert into agri_tx
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="pid != null">pid,</if>
+            <if test="txid != null">txid,</if>
+            <if test="timestamp != null">timestamp,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="pid != null">#{pid},</if>
+            <if test="txid != null">#{txid},</if>
+            <if test="timestamp != null">#{timestamp},</if>
+         </trim>
+    </insert>
+
+    <update id="updateAgriTx" parameterType="AgriTx">
+        update agri_tx
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="txid != null">txid = #{txid},</if>
+            <if test="timestamp != null">timestamp = #{timestamp},</if>
+        </trim>
+        where pid = #{pid}
+    </update>
+
+    <delete id="deleteAgriTxByPid" parameterType="String">
+        delete from agri_tx where pid = #{pid}
+    </delete>
+
+    <delete id="deleteAgriTxByPids" parameterType="String">
+        delete from agri_tx where pid in 
+        <foreach item="pid" collection="array" open="(" separator="," close=")">
+            #{pid}
+        </foreach>
+    </delete>
+</mapper>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriRoutineMapper">
+
+    <resultMap type="AgriRoutine" id="AgriRoutineResult">
+        <result property="id"    column="id"    />
+        <result property="rid"    column="rid"    />
+        <result property="pid"    column="pid"    />
+        <result property="checkName"    column="check_name"    />
+        <result property="checkTime"    column="check_time"    />
+        <result property="problems"    column="problems"    />
+        <result property="proposal"    column="proposal"    />
+        <result property="orgMember"    column="org_member"    />
+        <result property="uploadsUrl"    column="uploads_url"    />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp"    column="time_stamp"    />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriRoutineVo">
+        select id, rid, pid, check_name, check_time, problems, proposal, org_member, uploads_url, tx_hash, time_stamp, status from agri_routine
+    </sql>
+
+    <select id="selectAgriRoutineList" parameterType="AgriRoutine" resultMap="AgriRoutineResult">
+        <include refid="selectAgriRoutineVo"/>
+        <where>
+            <if test="rid != null  and rid != ''"> and rid = #{rid}</if>
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+            <if test="checkName != null  and checkName != ''"> and check_name like concat('%', #{checkName}, '%')</if>
+        </where>
+    </select>
+
+    <select id="selectAgriRoutineById" parameterType="Long" resultMap="AgriRoutineResult">
+        <include refid="selectAgriRoutineVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectRoutineByPid" parameterType="string" resultMap="AgriRoutineResult">
+        <include refid="selectAgriRoutineVo"/>
+        where pid = #{pid}
+    </select>
+    <select id="selectRoutineByRid" parameterType="string" resultMap="AgriRoutineResult">
+        <include refid="selectAgriRoutineVo"/>
+        where rid = #{rid}
+    </select>
+
+    <insert id="insertAgriRoutine" parameterType="AgriRoutine" useGeneratedKeys="true" keyProperty="id">
+        insert into agri_routine
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="rid != null">rid,</if>
+            <if test="pid != null">pid,</if>
+            <if test="checkName != null">check_name,</if>
+            <if test="checkTime != null">check_time,</if>
+            <if test="problems != null">problems,</if>
+            <if test="proposal != null">proposal,</if>
+            <if test="orgMember != null">org_member,</if>
+            <if test="uploadsUrl != null">uploads_url,</if>
+            <if test="status != null">status,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="rid != null">#{rid},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="checkName != null">#{checkName},</if>
+            <if test="checkTime != null">#{checkTime},</if>
+            <if test="problems != null">#{problems},</if>
+            <if test="proposal != null">#{proposal},</if>
+            <if test="orgMember != null">#{orgMember},</if>
+            <if test="uploadsUrl != null">#{uploadsUrl},</if>
+            <if test="status != null">#{status},</if>
+        </trim>
+    </insert>
+
+    <update id="updateAgriRoutine" parameterType="AgriRoutine">
+        update agri_routine
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="rid != null">rid = #{rid},</if>
+            <if test="pid != null">pid = #{pid},</if>
+            <if test="checkName != null">check_name = #{checkName},</if>
+            <if test="checkTime != null">check_time = #{checkTime},</if>
+            <if test="problems != null">problems = #{problems},</if>
+            <if test="proposal != null">proposal = #{proposal},</if>
+            <if test="orgMember != null">org_member = #{orgMember},</if>
+            <if test="uploadsUrl != null">uploads_url = #{uploadsUrl},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriRoutineById" parameterType="Long">
+        delete from agri_routine where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriRoutineByIds" parameterType="String">
+        delete from agri_routine where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteRoutineByPid" parameterType="string">
+        delete from agri_routine where pid = #{pid}
+    </delete>
+</mapper>

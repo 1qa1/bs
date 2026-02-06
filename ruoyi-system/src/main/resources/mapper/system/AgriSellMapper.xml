@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriSellMapper">
+
+    <resultMap type="AgriSell" id="AgriSellResult">
+        <result property="id"    column="id"    />
+        <result property="sid"    column="sid"    />
+        <result property="pid"    column="pid"    />
+        <result property="arrivalTime"    column="arrival_time"    />
+        <result property="amount"    column="amount"    />
+        <result property="checkTime"    column="check_time"    />
+        <result property="checkName"    column="check_name"    />
+        <result property="checkResult"    column="check_result"    />
+        <result property="tp"    column="tp"    />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp"    column="time_stamp"    />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriSellVo">
+        select id, sid, pid, arrival_time, amount, check_time, check_name, check_result, tp, tx_hash, time_stamp, status from agri_sell
+    </sql>
+
+    <select id="selectAgriSellList" parameterType="AgriSell" resultMap="AgriSellResult">
+        <include refid="selectAgriSellVo"/>
+        <where>
+            <if test="sid != null  and sid != ''"> and sid = #{sid}</if>
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+        </where>
+    </select>
+
+    <select id="selectAgriSellById" parameterType="Long" resultMap="AgriSellResult">
+        <include refid="selectAgriSellVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectSellByPid" parameterType="string" resultMap="AgriSellResult">
+        <include refid="selectAgriSellVo"/>
+        where pid = #{pid}
+    </select>
+    <select id="selectSellBySid" parameterType="string" resultMap="AgriSellResult">
+        <include refid="selectAgriSellVo"/>
+        where sid = #{sid}
+    </select>
+
+    <insert id="insertAgriSell" parameterType="AgriSell" useGeneratedKeys="true" keyProperty="id">
+        insert into agri_sell
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="sid != null">sid,</if>
+            <if test="pid != null">pid,</if>
+            <if test="arrivalTime != null">arrival_time,</if>
+            <if test="amount != null">amount,</if>
+            <if test="checkTime != null">check_time,</if>
+            <if test="checkName != null">check_name,</if>
+            <if test="checkResult != null">check_result,</if>
+            <if test="tp != null">tp,</if>
+            <if test="status != null">status,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="sid != null">#{sid},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="arrivalTime != null">#{arrivalTime},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="checkTime != null">#{checkTime},</if>
+            <if test="checkName != null">#{checkName},</if>
+            <if test="checkResult != null">#{checkResult},</if>
+            <if test="tp != null">#{tp},</if>
+            <if test="status != null">#{status},</if>
+        </trim>
+    </insert>
+
+    <update id="updateAgriSell" parameterType="AgriSell">
+        update agri_sell
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="sid != null">sid = #{sid},</if>
+            <if test="pid != null">pid = #{pid},</if>
+            <if test="arrivalTime != null">arrival_time = #{arrivalTime},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="checkTime != null">check_time = #{checkTime},</if>
+            <if test="checkName != null">check_name = #{checkName},</if>
+            <if test="checkResult != null">check_result = #{checkResult},</if>
+            <if test="tp != null">tp = #{tp},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriSellById" parameterType="Long">
+        delete from agri_sell where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriSellByIds" parameterType="String">
+        delete from agri_sell where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteSellByPid" parameterType="string">
+        delete from agri_sell where pid = #{pid}
+    </delete>
+</mapper>

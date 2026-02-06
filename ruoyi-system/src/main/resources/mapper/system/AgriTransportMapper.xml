@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AgriTransportMapper">
+
+    <resultMap type="AgriTransport" id="AgriTransportResult">
+        <result property="id"    column="id"    />
+        <result property="tid"    column="tid"    />
+        <result property="pid"    column="pid"    />
+        <result property="driverName"    column="driver_name"    />
+        <result property="phone"    column="phone"    />
+        <result property="carNumber"    column="car_number"    />
+        <result property="productAmount"    column="product_amount"    />
+        <result property="startCity"    column="start_city"    />
+        <result property="tp"    column="tp"    />
+        <result property="endCity"    column="end_city"    />
+        <result property="startTime"    column="start_time"    />
+        <result property="txHash"    column="tx_hash"    />
+        <result property="timeStamp"    column="time_stamp"    />
+        <result property="status"    column="status"    />
+    </resultMap>
+
+    <sql id="selectAgriTransportVo">
+        select id, tid, pid, driver_name, phone, car_number, product_amount, start_city, tp, end_city, start_time, tx_hash, time_stamp, status from agri_transport
+    </sql>
+
+    <select id="selectAgriTransportList" parameterType="AgriTransport" resultMap="AgriTransportResult">
+        <include refid="selectAgriTransportVo"/>
+        <where>
+            <if test="tid != null  and tid != ''"> and tid = #{tid}</if>
+            <if test="pid != null  and pid != ''"> and pid = #{pid}</if>
+            <if test="driverName != null  and driverName != ''"> and driver_name like concat('%', #{driverName}, '%')</if>
+        </where>
+    </select>
+
+    <select id="selectAgriTransportById" parameterType="Long" resultMap="AgriTransportResult">
+        <include refid="selectAgriTransportVo"/>
+        where id = #{id}
+    </select>
+    <select id="selectTransportByPid" parameterType="string" resultMap="AgriTransportResult">
+        <include refid="selectAgriTransportVo"/>
+        where pid = #{pid}
+    </select>
+    <select id="selectTransportByTid" parameterType="string" resultMap="AgriTransportResult">
+        <include refid="selectAgriTransportVo"/>
+        where tid = #{tid}
+    </select>
+
+    <insert id="insertAgriTransport" parameterType="AgriTransport" useGeneratedKeys="true" keyProperty="id">
+        insert into agri_transport
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tid != null">tid,</if>
+            <if test="pid != null">pid,</if>
+            <if test="driverName != null">driver_name,</if>
+            <if test="phone != null">phone,</if>
+            <if test="carNumber != null">car_number,</if>
+            <if test="productAmount != null">product_amount,</if>
+            <if test="startCity != null">start_city,</if>
+            <if test="tp != null">tp,</if>
+            <if test="endCity != null">end_city,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="status != null">status,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="tid != null">#{tid},</if>
+            <if test="pid != null">#{pid},</if>
+            <if test="driverName != null">#{driverName},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="carNumber != null">#{carNumber},</if>
+            <if test="productAmount != null">#{productAmount},</if>
+            <if test="startCity != null">#{startCity},</if>
+            <if test="tp != null">#{tp},</if>
+            <if test="endCity != null">#{endCity},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="status != null">#{status},</if>
+        </trim>
+    </insert>
+
+    <update id="updateAgriTransport" parameterType="AgriTransport">
+        update agri_transport
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="tid != null">tid = #{tid},</if>
+            <if test="pid != null">pid = #{pid},</if>
+            <if test="driverName != null">driver_name = #{driverName},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="carNumber != null">car_number = #{carNumber},</if>
+            <if test="productAmount != null">product_amount = #{productAmount},</if>
+            <if test="startCity != null">start_city = #{startCity},</if>
+            <if test="tp != null">tp = #{tp},</if>
+            <if test="endCity != null">end_city = #{endCity},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="txHash != null">tx_hash = #{txHash},</if>
+            <if test="timeStamp != null">time_stamp = #{timeStamp},</if>
+            <if test="status != null">status = #{status},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAgriTransportById" parameterType="Long">
+        delete from agri_transport where id = #{id}
+    </delete>
+
+    <delete id="deleteAgriTransportByIds" parameterType="String">
+        delete from agri_transport where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    <delete id="deleteTransportByPid">
+        delete from agri_transport where pid = #{pid}
+    </delete>
+</mapper>
