@@ -1,7 +1,9 @@
 package com.ruoyi.web.controller.system;
 
 import com.ruoyi.common.config.RuoYiConfig;
+import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.system.domain.AgriBCCheck;
@@ -31,7 +33,7 @@ import org.hyperledger.fabric.client.*;
 @Slf4j
 @RestController
 @RequestMapping("/system/check/")
-public class SysAgriCheckController {
+public class SysAgriCheckController extends BaseController {
 
     @Autowired
     private AgriCheckServiceImpl service;
@@ -41,6 +43,30 @@ public class SysAgriCheckController {
 
     @Autowired
     private AgriTxServiceImpl txService;
+
+    /**
+     * 查询自我检查列表 (支持分页和条件查询)
+     * 供运输端筛选合格产品使用
+     */
+    @GetMapping("/list")
+    public TableDataInfo list(AgriCheck agriCheck) {
+        startPage(); // 开启分页
+        List<AgriCheck> list = service.selectAgriCheckList(agriCheck);
+
+        // 遍历列表，填充产品名称和种植地
+        for (AgriCheck item : list) {
+            AgriProduct p = productService.selectProductByPid(item.getPid());
+            if (p != null) {
+                item.getParams().put("productName", p.getName());
+                // 填充种植地，供运输端自动填写出发地
+                item.getParams().put("plantCity", p.getPlantCity());
+            } else {
+                item.getParams().put("productName", "未知产品");
+                item.getParams().put("plantCity", "");
+            }
+        }
+        return getDataTable(list); // 返回分页数据
+    }
 
     // 增加
     @PostMapping("/")
@@ -63,7 +89,8 @@ public class SysAgriCheckController {
                 // 准备上链数据
                 AgriBCCheck bcCheck = new AgriBCCheck();
                 bcCheck.setID(check.getCid());
-                bcCheck.setPid(check.getGid()); // 注意：通常将 gid 传给链上的 Pid 字段，或根据链码实际结构调整
+                //bcCheck.setPid(check.getGid());
+                bcCheck.setPid(check.getPid());
                 bcCheck.setProjName(check.getProjName());
                 bcCheck.setTypes(check.getTypes());
                 bcCheck.setResult(check.getResult());
@@ -126,49 +153,36 @@ public class SysAgriCheckController {
 
     // 查询
     @GetMapping("/top/{id}")
-    public AjaxResult getCheck(@PathVariable("id") String pid) throws GatewayException {
-        // 查询所有的cid 根据pid
-        List<AgriCheck> agriChecks = service.selectCheckByPid(pid);
-        List<AgriBCCheck> results = new ArrayList<>();
-        // 注意：如果 pid 是 'all'，selectProductByPid(pid) 可能会报错或返回 null，需防御
-        // 但原有逻辑似乎假设 pid 有效？
-        // 如果 pid="all"，service.selectCheckByPid("all") 会返回所有吗？
-        // 上面代码 agriChecks = service.selectCheckByPid(pid);
-        // 如果 pid 是 "all", mapper 需要处理。假设它能返回列表。
+    public AjaxResult getCheck(@PathVariable("id") String pid) {
+        List<AgriCheck> list;
 
-        for (AgriCheck check : agriChecks) {
-            AgriBCCheck bcCheck = service.queryCheck(check.getCid());
-            if (!Objects.isNull(bcCheck)) {
-                // 原逻辑：bcCheck.setPid(name); 覆盖了 UUID
-                // 新逻辑：保留 UUID，将名称放入 params
-                String name = "未知产品";
-                if (check.getPid() != null) {
-                    com.ruoyi.system.domain.AgriProduct p = productService.selectProductByPid(check.getPid());
-                    if (p != null) {
-                        name = p.getName();
-                    }
-                }
-
-                if (bcCheck.getParams() == null) {
-                    bcCheck.setParams(new java.util.HashMap<>());
-                }
-                bcCheck.getParams().put("productName", name);
-
-                AgriTx tx = txService.selectAgriTxByPid(bcCheck.getID());
-                if (tx != null) {
-                    bcCheck.setTxHash(tx.getTxid());
-                    bcCheck.setTimeStamp(tx.getTimestamp());
-                }
-                results.add(bcCheck);
-            } else {
-                service.deleteAgriCheckById(check.getId());
-            }
+        // 1. 根据 pid 从数据库查询 AgriCheck 列表 (这些对象包含 status 字段)
+        if ("all".equals(pid) || "null".equals(pid) || pid == null) {
+            list = service.selectAgriCheckList(null);
+        } else {
+            // 按产品 pid 筛选
+            AgriCheck queryParam = new AgriCheck();
+            queryParam.setPid(pid);
+            list = service.selectAgriCheckList(queryParam);
         }
-        return AjaxResult.success(results);
+
+        // 2. 遍历列表，为每个对象填充前端需要的附加信息（如产品名称）
+        for (AgriCheck item : list) {
+            // 根据 item 中的 pid 查找产品名称
+            AgriProduct p = productService.selectProductByPid(item.getPid());
+            String pName = (p != null) ? p.getName() : "未知产品";
+
+            // 关键：将产品名称放入 BaseEntity 自带的 params Map 中
+            // 这样既不破坏原有对象结构，又能传递额外信息
+            item.getParams().put("productName", pName);
+        }
+
+        // 3. 返回包含了 status 和 productName 的数据库对象列表
+        return AjaxResult.success(list);
     }
 
     // 查询单个信息
-    @GetMapping("/{cid}")
+    /*@GetMapping("/{cid}")
     public AjaxResult getInfo(@PathVariable("cid") String cid) throws GatewayException {
         AgriCheck dbCheck = service.selectCheckByCid(cid);
         String pid = dbCheck.getPid();
@@ -193,6 +207,22 @@ public class SysAgriCheckController {
             bcCheck.setTimeStamp(tx.getTimestamp());
         }
         return AjaxResult.success(bcCheck);
+    }*/
+    @GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        AgriCheck dbCheck = service.selectAgriCheckById(id);
+        if (dbCheck == null) {
+            return AjaxResult.error("未找到相关检测记录");
+        }
+
+        // 补充链上信息
+        String cid = dbCheck.getCid();
+        AgriTx tx = txService.selectAgriTxByPid(cid);
+        if (tx != null) {
+            dbCheck.setTxHash(tx.getTxid());
+            dbCheck.setTimeStamp(tx.getTimestamp());
+        }
+        return AjaxResult.success(dbCheck);
     }
 
     @PostMapping("/export")

@@ -238,16 +238,66 @@ public class SysAgriMedicineController {
     // 查询单个信息 (根据 DB ID)
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
-        // 1. 根据数据库 ID 查询
         AgriMedicine dbMedicine = service.selectAgriMedicineById(id);
         if (dbMedicine == null) {
             return AjaxResult.error("未找到相关用药记录");
         }
-
-        // 2. 获取业务主键
         String mid = dbMedicine.getMid();
 
-        // 3. 补充链上信息 (虽然数据库可能已有，但可再次通过 Tx 表确认)
+        // --- 核心修改：增加读时校验 (Verify-on-Read) ---
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        AgriBCMedicine chainData = null;
+
+        try {
+            // 1. 从区块链获取“真理”数据
+            chainData = service.queryMedicine(mid);
+
+            if (chainData != null) {
+                // 2. 逐字段比对
+                if (!isMatch(dbMedicine.getName(), chainData.getName())) {
+                    tamperedFields.add("name");
+                }
+                if (!isMatch(dbMedicine.getBatchNo(), chainData.getBatchNo())) {
+                    tamperedFields.add("batchNo");
+                }
+                // 金额/数量比较建议使用 equals 或 BigDecimal，这里假设是 String
+                if (!isMatch(dbMedicine.getAmount(), chainData.getAmount())) {
+                    tamperedFields.add("amount");
+                }
+                // 时间比较
+                if (!isMatch(dbMedicine.getUseTime(), chainData.getUseTime())) {
+                    tamperedFields.add("useTime");
+                }
+
+                if (tamperedFields.isEmpty()) {
+                    isVerified = true;
+                } else {
+                    log.warn("发现数据篡改! MID={}, 篡改字段: {}", mid, tamperedFields);
+                }
+            } else {
+                log.warn("区块链上未找到数据! MID={}", mid);
+            }
+        } catch (Exception e) {
+            log.error("区块链校验失败", e);
+        }
+
+        // 3. 将校验结果放入 params 返回前端
+        if (dbMedicine.getParams() == null) {
+            dbMedicine.setParams(new java.util.HashMap<>());
+        }
+        dbMedicine.getParams().put("isVerified", isVerified);
+        if (!isVerified) {
+            dbMedicine.getParams().put("tamperedFields", tamperedFields);
+            if (chainData != null) {
+                dbMedicine.getParams().put("chainData", chainData); // 返回真实数据供对比
+            } else {
+                dbMedicine.getParams().put("chainStatus", "NotOnChain");
+            }
+        }
+        // --- 校验结束 ---
+
+        // 补充链上哈希 (仅作显示，不可作为信任依据)
         if (mid != null) {
             AgriTx tx = txService.selectAgriTxByPid(mid);
             if (tx != null) {
@@ -257,6 +307,13 @@ public class SysAgriMedicineController {
         }
 
         return AjaxResult.success(dbMedicine);
+    }
+
+    // 辅助比较方法
+    private boolean isMatch(String dbVal, String chainVal) {
+        if (dbVal == null)
+            return chainVal == null;
+        return dbVal.equals(chainVal);
     }
 
     @PostMapping("/export")

@@ -1,4 +1,5 @@
 <template>
+  <!-- 模板部分保持不变，注意出发地输入框已设置为 disabled -->
   <div class="app-container">
     <el-form :model="queryParams" ref="queryForm" size="big" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="商品名:" prop="transportName">
@@ -131,10 +132,6 @@
           <el-input placeholder="请输入车牌号" v-model="form.carNumber" clearable>
           </el-input>
         </el-form-item>
-<!--        <el-form-item label="出发地" prop="startCity">
-          <el-input placeholder="请输入出发地" v-model="form.startCity" clearable>
-          </el-input>
-        </el-form-item>-->
         <el-form-item label="出发地" prop="startCity">
           <el-input placeholder="自动获取种植地" v-model="form.startCity" disabled>
           </el-input>
@@ -166,7 +163,8 @@
 <script>
 import {listProduct} from  "@/api/plant/product";
 import {addTransport,updateTransport,delTransport,queryTransportByPid,getTransport} from "@/api/transport/transport";
-import { queryCheckByPid } from "@/api/plant/check";
+// 引入 listCheck
+import { listCheck } from "@/api/plant/check";
 
 export default {
   name: "transport",
@@ -212,47 +210,43 @@ export default {
     this.handleQuery(); // 页面加载时自动查询
   },
   methods: {
-    /**得到product数据 */
+    /** 得到检测合格的产品数据 */
     getProductList() {
       this.loading = true;
-      // 1. 获取所有检测记录
-      queryCheckByPid('all').then(checkRes => {
-          let checks = checkRes.data || [];
-          let qualifiedPids = new Set();
-          
-          // 2. 筛选出合格的产品PID
-          if (checks && checks.length > 0) {
-              checks.forEach(c => {
-                  // 注意：后端字段可能为 Result 或 result，根据前端 Check 页面的 prop="result" 推断为小写
-                  // 另外，后端 AgriBCCheck 中定义的字段名为 Result (大写)，Jackson 可能会序列化为 result (小写)
-                  // 为了保险，做兼容判断
-                  let res = c.result || c.Result;
-                  // 根据用户需求：只能选择经过检测合格的产品
-                  if (res && res.indexOf('合格') > -1) {
-                      qualifiedPids.add(c.pid); // 这里的 pid 现在是 UUID (由 SysAgriCheckController 修复)
-                  }
-              });
-          }
+      // 直接调用 listCheck 接口，查询结果为 "合格" 的记录
+      // 后端已在 list 接口中填充了 productName 和 plantCity
+      listCheck({result: '合格', pageNum: 1, pageSize: 1000}).then(response => {
+        this.loading = false;
+        let rawRows = response.rows;
+        let maps = [];
+        let uniqueMap = new Map();
 
-          // 3. 获取所有产品并过滤
-          listProduct({ pageNum: 1, pageSize: 1000 }).then( response => {
-            let allProducts = response.rows; // 使用 rows
-            let maps = []
-    
-            if (allProducts && allProducts.length > 0) {
-              for ( var i = 0 ; i < allProducts.length ; i++){
-                var p = allProducts[i];
-                
-                // 核心过滤逻辑：只有在合格集合中的 PID 才显示
-                if (qualifiedPids.has(p.pid)) {
-                    maps.push({"value": p.name, "id": p.pid, "plantCity": p.plantCity});
-                }
-              }
+        if (rawRows && rawRows.length > 0) {
+          for (var i = 0; i < rawRows.length; i++) {
+            var c = rawRows[i];
+            // 增加严格过滤：防止后端SQL使用模糊查询导致"不合格"（包含"合格"二字）的数据被返回
+            if (c.result !== '合格') {
+              continue;
             }
-            this.product = maps;
-            this.loading = false;
-          })
-      })
+
+            // 去重：同一个产品可能有多次合格记录，只取一次
+            if (!uniqueMap.has(c.pid)) {
+              uniqueMap.set(c.pid, true);
+
+              // 获取后端填充的 params 数据
+              let pName = (c.params && c.params.productName) ? c.params.productName : c.pid;
+              let pCity = (c.params && c.params.plantCity) ? c.params.plantCity : "";
+
+              maps.push({
+                "value": pName,      // 下拉框显示的名称
+                "id": c.pid,         // 实际保存的 PID
+                "plantCity": pCity   // 用于自动填充出发地
+              });
+            }
+          }
+        }
+        this.product = maps;
+      });
     },
     querySearch(queryString, cb) {
       let transports = this.product;
@@ -284,9 +278,7 @@ export default {
     },
     // 表单重置
     reset() {
-      this.form = {
-
-      };
+      this.form = {};
       this.resetForm("form");
     },
     /** 重置按钮操作 */
@@ -299,7 +291,7 @@ export default {
     // 多选框选中数据
     handleSelectionChange(selection) {
       this.ids = selection.map(item => item.id)
-      this.single = selection.length!==1
+      this.single = selection.length !== 1
       this.multiple = !selection.length
     },
 
@@ -308,7 +300,7 @@ export default {
       this.loading = true;
       // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
-      queryTransportByPid(pidToQuery).then( response => {
+      queryTransportByPid(pidToQuery).then(response => {
         this.transportList = response.data;
         this.total = this.transportList.length;
         this.loading = false;
@@ -361,12 +353,13 @@ export default {
     /** 删除按钮操作 */
     handleDelete(row) {
       const ids = row.id || this.ids;
-      this.$modal.confirm('是否确认删除数据项？').then(function() {
+      this.$modal.confirm('是否确认删除数据项？').then(function () {
         return delTransport(ids);
       }).then(() => {
         this.handleQuery();
         this.$modal.msgSuccess("删除成功");
-      }).catch(() => {});
+      }).catch(() => {
+      });
     },
 
     /** 导出按钮操作 */

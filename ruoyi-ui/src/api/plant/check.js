@@ -1,5 +1,15 @@
 
 import request from '@/utils/request'
+
+// 查询自我检查列表 (新增)
+export function listCheck(query) {
+  return request({
+    url: '/system/check/list',
+    method: 'get',
+    params: query
+  })
+}
+
 // 新增
 export function addCheck ( data ) {
     return request({

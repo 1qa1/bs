@@ -153,6 +153,8 @@
 <script>
 import {listProduct} from  "@/api/plant/product";
 import {addSell,updateSell,delSell,querySellByPid,getSell} from "@/api/sell/sell";
+// 引入 listCheck
+import { listCheck } from "@/api/plant/check";
 
 export default {
   name: "sell",
@@ -200,24 +202,44 @@ export default {
     this.handleQuery(); // 页面加载时自动查询
   },
   methods: {
-    /**得到product数据 */
+    /** 得到检测合格的产品数据 */
     getProductList() {
       this.loading = true;
-      // 增加分页参数，确保能获取到数据
-      listProduct({ pageNum: 1, pageSize: 1000 }).then( response => {
-        this.product = response.rows; // 使用 rows
+      // 直接调用 listCheck 接口，查询结果为 "合格" 的记录
+      // 后端已在 list 接口中填充了 productName
+      listCheck({result: '合格', pageNum: 1, pageSize: 1000}).then(response => {
         this.loading = false;
-        var maps = []
+        let rawRows = response.rows;
+        let maps = [];
+        let uniqueMap = new Map();
 
-        if (this.product && this.product.length > 0) {
-          for ( var i = 0 ; i < this.product.length ; i++){
-            var p = this.product[i];
-            // 映射：name -> value (显示), pid -> id (值)
-            maps.push({"value": p.name, "id": p.pid});
+        if (rawRows && rawRows.length > 0) {
+          for (var i = 0; i < rawRows.length; i++) {
+            var c = rawRows[i];
+
+            // 增加严格过滤：防止后端SQL使用模糊查询导致"不合格"（包含"合格"二字）的数据被返回
+            if (c.result !== '合格') {
+              continue;
+            }
+
+            // 去重：同一个产品可能有多次合格记录，只取一次
+            if (!uniqueMap.has(c.pid)) {
+              uniqueMap.set(c.pid, true);
+
+              // 获取后端填充的 params 数据
+              let pName = (c.params && c.params.productName) ? c.params.productName : c.pid;
+
+              maps.push({
+                "value": pName,      // 下拉框显示的名称
+                "id": c.pid,         // 实际保存的 PID
+                "checkName": c.projName, // 检验项目
+                "checkResult": c.result  // 检验结果
+              });
+            }
           }
         }
         this.product = maps;
-      })
+      });
     },
     querySearch(queryString, cb) {
       let sells = this.product;
@@ -235,6 +257,17 @@ export default {
     },
     selectChange(item) {
       this.form.pid = item;
+      // 查找当前选中的产品对象
+      const selectedProduct = this.product.find(p => p.id === item);
+      // 如果找到了产品，自动填充检验项目和结果
+      if (selectedProduct) {
+        if (selectedProduct.checkName) {
+          this.form.checkName = selectedProduct.checkName;
+        }
+        if (selectedProduct.checkResult) {
+          this.form.checkResult = selectedProduct.checkResult;
+        }
+      }
     },
     // 取消按钮
     cancel() {
@@ -243,9 +276,7 @@ export default {
     },
     // 表单重置
     reset() {
-      this.form = {
-
-      };
+      this.form = {};
       this.resetForm("form");
     },
     /** 重置按钮操作 */
@@ -258,7 +289,7 @@ export default {
     // 多选框选中数据
     handleSelectionChange(selection) {
       this.ids = selection.map(item => item.id)
-      this.single = selection.length!==1
+      this.single = selection.length !== 1
       this.multiple = !selection.length
     },
 
@@ -267,7 +298,7 @@ export default {
       this.loading = true;
       // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
-      querySellByPid(pidToQuery).then( response => {
+      querySellByPid(pidToQuery).then(response => {
         this.sellList = response.data;
         this.total = this.sellList.length;
         this.loading = false;
@@ -320,12 +351,13 @@ export default {
     /** 删除按钮操作 */
     handleDelete(row) {
       const ids = row.id || this.ids;
-      this.$modal.confirm('是否确认删除数据项？').then(function() {
+      this.$modal.confirm('是否确认删除数据项？').then(function () {
         return delSell(ids);
       }).then(() => {
         this.handleQuery();
         this.$modal.msgSuccess("删除成功");
-      }).catch(() => {});
+      }).catch(() => {
+      });
     },
 
     /** 导出按钮操作 */

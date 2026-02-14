@@ -217,6 +217,8 @@ export default {
       // 查询参数
       queryParams: {
         pid:null,
+        pageNum: 1,
+        pageSize: 10
       },
       // 表单参数
       form: {},
@@ -366,6 +368,7 @@ export default {
     /** 搜索按钮操作 */
     handleQuery() {
       this.loading = true;
+      // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
       queryCheckByPid(pidToQuery).then( response => {
         this.checkList = response.data;
