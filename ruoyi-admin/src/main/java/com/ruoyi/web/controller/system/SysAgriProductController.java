@@ -320,7 +320,7 @@ public class SysAgriProductController extends BaseController {
         return AjaxResult.success(bcProduct);
     }*/
     //    单个查询
-    @GetMapping("/{id}")
+    /*@GetMapping("/{id}")
     public AjaxResult getProduct(@PathVariable("id") Long id) {
         // 1. 先查数据库，获取完整信息 (包含 name, number, tp 等)
         AgriProduct product = service.selectAgriProductById(id);
@@ -332,6 +332,82 @@ public class SysAgriProductController extends BaseController {
         } else {
             return AjaxResult.error("未找到对应产品");
         }
+    }*/
+    /**
+     * 获取种植产品详细信息 (包含区块链真伪核验)
+     */
+    @GetMapping(value = "/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id)
+    {
+        // 1. 从数据库查询
+        AgriProduct product = service.selectAgriProductById(id);
+        if (product == null) {
+            return AjaxResult.error("未找到相关产品记录");
+        }
+
+        // 2. 初始化校验状态
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 3. 只有状态为“已上链” (status == 1) 才进行校验
+        if (product.getStatus() != null && product.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 使用 pid (UUID) 作为链上的 Key
+                AgriBCProduct bcProduct = service.queryProduct(product.getPid());
+
+                if (bcProduct != null) {
+                    // 4. 逐字段比对
+                    // 比对产品名称
+                    if (!Objects.equals(product.getName(), bcProduct.getProductName())) {
+                        tamperedFields.add("产品名称(本地:" + product.getName() + " vs 链上:" + bcProduct.getProductName() + ")");
+                    }
+                    // 比对种植数量
+                    // 注意：链上可能是 int，本地可能是 String，需要转换比较
+                    String bcNumberStr = String.valueOf(bcProduct.getNumber());
+                    if (!Objects.equals(product.getNumber(), bcNumberStr)) {
+                        // 尝试容错：如果本地是 "100" 而链上是 100，视为一致
+                        // 这里简单处理，如果字符串不相等则记录
+                        tamperedFields.add("种植数量");
+                    }
+                    // 比对规格
+                    if (!Objects.equals(product.getTp(), bcProduct.getTP())) {
+                        tamperedFields.add("规格");
+                    }
+                    // 比对种植地
+                    if (!Objects.equals(product.getPlantCity(), bcProduct.getPlantCity())) {
+                        tamperedFields.add("种植地");
+                    }
+                    // 比对唯一码
+                    if (!Objects.equals(product.getOnlyCode(), bcProduct.getOnlyCode())) {
+                        tamperedFields.add("唯一码");
+                    }
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 5. 封装校验结果到 params
+        if (product.getParams() == null) {
+            product.setParams(new java.util.HashMap<>());
+        }
+        product.getParams().put("isVerified", isVerified);
+        product.getParams().put("verifyMsg", verifyMsg);
+        product.getParams().put("tamperedFields", tamperedFields);
+
+        return AjaxResult.success(product);
     }
 
     @PostMapping("/export")

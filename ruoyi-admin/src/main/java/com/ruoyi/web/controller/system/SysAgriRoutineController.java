@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -152,12 +153,88 @@ public class SysAgriRoutineController {
     }
 
     // 查询单个信息 (根据数据库 ID)
+    /*@GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        AgriRoutine dbRoutine = service.selectAgriRoutineById(id);
+        if (dbRoutine == null) {
+            return AjaxResult.error("未找到相关日常检查记录");
+        }
+
+        // 补充链上信息
+        String rid = dbRoutine.getRid();
+        AgriTx tx = txService.selectAgriTxByPid(rid);
+        if (tx != null) {
+            dbRoutine.setTxHash(tx.getTxid());
+            dbRoutine.setTimeStamp(tx.getTimestamp());
+        }
+        return AjaxResult.success(dbRoutine);
+    }*/
+    // 查询单个信息 (根据数据库 ID)
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         AgriRoutine dbRoutine = service.selectAgriRoutineById(id);
         if (dbRoutine == null) {
             return AjaxResult.error("未找到相关日常检查记录");
         }
+
+        // --- 核心修改：增加读时校验 (Verify-on-Read) ---
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 只有状态为“已上链” (status == 1) 才进行校验
+        if (dbRoutine.getStatus() != null && dbRoutine.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 假设 service 已经实现了 queryRoutine 方法 (调用 Fabric SDK)
+                AgriBCRoutineCheck bcRoutine = service.queryRoutineCheck(dbRoutine.getRid());
+
+                if (bcRoutine != null) {
+                    // 逐字段比对
+                    if (!Objects.equals(dbRoutine.getCheckName(), bcRoutine.getCheckName())) {
+                        tamperedFields.add("检查项目名称");
+                    }
+                    // 注意日期格式匹配，如果链上是字符串，本地也是字符串，直接比对
+                    if (!Objects.equals(dbRoutine.getCheckTime(), bcRoutine.getCheckTime())) {
+                        tamperedFields.add("检查日期");
+                    }
+                    if (!Objects.equals(dbRoutine.getProblems(), bcRoutine.getProblems())) {
+                        tamperedFields.add("检查问题");
+                    }
+                    if (!Objects.equals(dbRoutine.getProposal(), bcRoutine.getProposal())) {
+                        tamperedFields.add("检查建议");
+                    }
+                    if (!Objects.equals(dbRoutine.getOrgMember(), bcRoutine.getOrgMember())) {
+                        tamperedFields.add("参与人员");
+                    }
+                    // 比对关联产品ID
+                    /*if (!Objects.equals(dbRoutine.getPid(), bcRoutine.getPid())) {
+                        tamperedFields.add("关联产品ID(本地:" + dbRoutine.getPid() + " vs 链上:" + bcRoutine.getPid() + ")");
+                    }*/
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                        log.warn("数据篡改报警: ID={}, RID={}, 差异={}", id, dbRoutine.getRid(), tamperedFields);
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常，无法完成校验", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 封装校验结果到 params
+        if (dbRoutine.getParams() == null) {
+            dbRoutine.setParams(new java.util.HashMap<>());
+        }
+        dbRoutine.getParams().put("isVerified", isVerified);
+        dbRoutine.getParams().put("verifyMsg", verifyMsg);
+        dbRoutine.getParams().put("tamperedFields", tamperedFields);
 
         // 补充链上信息
         String rid = dbRoutine.getRid();

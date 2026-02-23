@@ -69,6 +69,35 @@
       <el-table-column label="检查项目名称" align="center" prop="projName" />
       <el-table-column label="检查类型" align="center" prop="types" />
       <el-table-column label="检查结果" align="center" prop="result" />
+      <!-- ================= 新增：区块链实时校验列 ================= -->
+      <el-table-column label="链上核验" align="center" width="120">
+        <template slot-scope="scope">
+          <!-- 1. 校验中：显示加载图标 -->
+          <div v-if="scope.row.params.verifyStatus === 'loading'" style="color: #909399">
+            <i class="el-icon-loading"></i> 核验中...
+          </div>
+
+          <!-- 2. 校验通过：绿色盾牌 -->
+          <el-tooltip v-else-if="scope.row.params.verifyStatus === 'success'"
+                      content="区块链指纹比对通过，数据未被篡改" placement="top">
+            <el-tag type="success" effect="dark" size="small">
+              <i class="el-icon-circle-check"></i> 真实
+            </el-tag>
+          </el-tooltip>
+
+          <!-- 3. 校验失败/篡改：红色警告 -->
+          <el-tooltip v-else-if="scope.row.params.verifyStatus === 'fail'"
+                      :content="'警告：' + scope.row.params.verifyMsg" placement="top">
+            <el-tag type="danger" effect="dark" size="small">
+              <i class="el-icon-warning"></i> 异常
+            </el-tag>
+          </el-tooltip>
+
+          <!-- 4. 未上链 -->
+          <el-tag v-else type="info" size="small">未上链</el-tag>
+        </template>
+      </el-table-column>
+      <!-- ======================================================== -->
       <el-table-column label="追溯码" align="center" prop="txHash" />
       <el-table-column label="时间戳" align="center" prop="timeStamp" />
       <el-table-column label="上链状态" align="center" prop="status">
@@ -366,7 +395,7 @@ export default {
     })
     },
     /** 搜索按钮操作 */
-    handleQuery() {
+    /*handleQuery() {
       this.loading = true;
       // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
@@ -375,6 +404,66 @@ export default {
         this.total = this.checkList.length;
         this.loading = false;
       })
+    },*/
+    handleQuery() {
+      this.loading = true;
+      const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
+
+      queryCheckByPid(pidToQuery).then(response => {
+        // 1. 先处理基础数据
+        let rawList = response.data;
+
+        // 2. 为每条数据初始化校验状态，避免 Vue 监听不到
+        this.checkList = rawList.map(item => {
+          if (!item.params) {
+            item.params = {};
+          }
+          // 状态枚举: 'initial'(未开始), 'loading'(校验中), 'success'(通过), 'fail'(篡改/失败)
+          // 如果是未上链(status!=1)，直接标记为 none
+          item.params.verifyStatus = (item.status === 1) ? 'loading' : 'none';
+          item.params.verifyMsg = '';
+          return item;
+        });
+
+        this.total = this.checkList.length;
+        this.loading = false;
+
+        // 3. 列表渲染完成后，立即触发异步校验
+        this.verifyListItems();
+      });
+    },
+
+    /** 异步逐个校验列表项 */
+    verifyListItems() {
+      this.checkList.forEach(item => {
+        // 只校验状态为“上链中”或“已上链”且标记为 loading 的数据
+        if (item.status === 1 && item.params.verifyStatus === 'loading') {
+
+          // 调用后端 getInfo 接口 (对应前端 API getCheck)
+          // 后端 getInfo 已经包含了 verify 逻辑
+          getCheck(item.id).then(res => {
+            const verified = res.data.params.isVerified;
+            const tampered = res.data.params.tamperedFields;
+
+            // 更新视图状态
+            if (verified) {
+              this.$set(item.params, 'verifyStatus', 'success');
+              this.$set(item.params, 'verifyMsg', '数据真实有效');
+            } else {
+              this.$set(item.params, 'verifyStatus', 'fail');
+              // 如果有篡改字段，显示出来
+              if (tampered && tampered.length > 0) {
+                this.$set(item.params, 'verifyMsg', '篡改字段: ' + tampered.join(','));
+              } else {
+                this.$set(item.params, 'verifyMsg', '链上数据不一致或网络异常');
+              }
+            }
+          }).catch(err => {
+            console.error("校验请求异常", err);
+            this.$set(item.params, 'verifyStatus', 'error'); // 网络错误等
+          });
+        }
+      });
     },
 
     /** 新增按钮操作 */

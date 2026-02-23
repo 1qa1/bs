@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.Objects;
 
 /**
  * 肥料管理 Controller
@@ -166,12 +167,83 @@ public class SysAgriFertilizerController {
     }
 
     // 查询单个详情 (根据数据库 ID)
+    /*@GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        AgriFertilizer dbFertilizer = service.selectAgriFertilizerById(id);
+        if (dbFertilizer == null) {
+            return AjaxResult.error("未找到相关肥料记录");
+        }
+
+        // 补充链上信息
+        String fid = dbFertilizer.getFid();
+        AgriTx tx = txService.selectAgriTxByPid(fid);
+        if (tx != null) {
+            dbFertilizer.setTxHash(tx.getTxid());
+            dbFertilizer.setTimeStamp(tx.getTimestamp());
+        }
+
+        return AjaxResult.success(dbFertilizer);
+    }*/
+    // 查询单个详情 (根据数据库 ID)
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         AgriFertilizer dbFertilizer = service.selectAgriFertilizerById(id);
         if (dbFertilizer == null) {
             return AjaxResult.error("未找到相关肥料记录");
         }
+
+        // --- 核心修改：增加读时校验 (Verify-on-Read) ---
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 只有状态为“已上链” (status == 1) 才进行校验
+        if (dbFertilizer.getStatus() != null && dbFertilizer.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 使用 FID 作为链上的 Key
+                // 假设 service 已经实现了 queryFertilizer 方法
+                AgriBCFertilizer bcFertilizer = service.queryFertilizer(dbFertilizer.getFid());
+
+                if (bcFertilizer != null) {
+                    // 逐字段比对
+                    if (!java.util.Objects.equals(dbFertilizer.getName(), bcFertilizer.getName())) {
+                        tamperedFields.add("肥料名称");
+                    }
+                    if (!java.util.Objects.equals(dbFertilizer.getCompany(), bcFertilizer.getCompany())) {
+                        tamperedFields.add("肥料公司");
+                    }
+                    if (!java.util.Objects.equals(dbFertilizer.getBatchNo(), bcFertilizer.getBatchNo())) {
+                        tamperedFields.add("生产批号");
+                    }
+                    // 时间比较
+                    if (!java.util.Objects.equals(dbFertilizer.getUseTime(), bcFertilizer.getUseTime())) {
+                        tamperedFields.add("使用时间");
+                    }
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                        log.warn("数据篡改报警: ID={}, FID={}, 差异={}", id, dbFertilizer.getFid(), tamperedFields);
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常，无法完成校验", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 封装校验结果到 params
+        if (dbFertilizer.getParams() == null) {
+            dbFertilizer.setParams(new java.util.HashMap<>());
+        }
+        dbFertilizer.getParams().put("isVerified", isVerified);
+        dbFertilizer.getParams().put("verifyMsg", verifyMsg);
+        dbFertilizer.getParams().put("tamperedFields", tamperedFields);
 
         // 补充链上信息
         String fid = dbFertilizer.getFid();

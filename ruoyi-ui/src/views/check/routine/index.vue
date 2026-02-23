@@ -73,6 +73,33 @@
       <el-table-column label="参与人员" align="center" prop="orgMember" />
       <el-table-column label="追溯码" align="center" prop="txHash" />
       <el-table-column label="时间戳" align="center" prop="timeStamp" />
+      <el-table-column label="链上核验" align="center" width="120">
+        <template slot-scope="scope">
+          <!-- 1. 校验中 -->
+          <div v-if="scope.row.params.verifyStatus === 'loading'" style="color: #909399">
+            <i class="el-icon-loading"></i> 核验中...
+          </div>
+
+          <!-- 2. 校验通过 -->
+          <el-tooltip v-else-if="scope.row.params.verifyStatus === 'success'"
+                      content="区块链指纹比对通过，数据未被篡改" placement="top">
+            <el-tag type="success" effect="dark" size="small">
+              <i class="el-icon-circle-check"></i> 真实
+            </el-tag>
+          </el-tooltip>
+
+          <!-- 3. 校验失败/篡改 -->
+          <el-tooltip v-else-if="scope.row.params.verifyStatus === 'fail'"
+                      :content="'警告：' + scope.row.params.verifyMsg" placement="top">
+            <el-tag type="danger" effect="dark" size="small">
+              <i class="el-icon-warning"></i> 异常
+            </el-tag>
+          </el-tooltip>
+
+          <!-- 4. 未上链 -->
+          <el-tag v-else type="info" size="small">未上链</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="上链状态" align="center" prop="status">
         <template slot-scope="scope">
           <el-tag type="info" v-if="scope.row.status == 0"><i class="el-icon-loading"></i> 上链中</el-tag>
@@ -338,7 +365,7 @@ export default {
       })
     },
     /** 搜索按钮操作 */
-    handleQuery() {
+    /*handleQuery() {
       this.loading = true;
       // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
@@ -347,6 +374,64 @@ export default {
         this.total = this.routineList.length;
         this.loading = false;
       })
+    },*/
+    handleQuery() {
+      this.loading = true;
+      // 如果 pid 为空，传递 'all'
+      const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
+      queryRoutineByPid(pidToQuery).then( response => {
+        let rawList = response.data;
+
+        // 1. 初始化校验状态
+        this.routineList = rawList.map(item => {
+          if (!item.params) {
+            item.params = {};
+          }
+          // 如果状态是已上链(1)，则标记为 loading，否则为 none
+          item.params.verifyStatus = (item.status === 1) ? 'loading' : 'none';
+          item.params.verifyMsg = '';
+          return item;
+        });
+
+        this.total = this.routineList.length;
+        this.loading = false;
+
+        // 2. 触发异步校验
+        this.verifyListItems();
+      })
+    },
+
+    /** 异步逐个校验列表项 (新增方法) */
+    verifyListItems() {
+      this.routineList.forEach(item => {
+        // 只校验状态为“已上链”且标记为 loading 的数据
+        if (item.status === 1 && item.params.verifyStatus === 'loading') {
+
+          // 调用后端 getRoutine 接口 (对应后端的 getInfo)
+          getRoutine(item.id).then(res => {
+            const verified = res.data.params.isVerified;
+            const tampered = res.data.params.tamperedFields;
+            // 获取后端返回的具体消息
+            const backendMsg = res.data.params.verifyMsg;
+
+            // 更新视图状态
+            if (verified) {
+              this.$set(item.params, 'verifyStatus', 'success');
+              this.$set(item.params, 'verifyMsg', '数据真实有效');
+            } else {
+              this.$set(item.params, 'verifyStatus', 'fail');
+              if (tampered && tampered.length > 0) {
+                this.$set(item.params, 'verifyMsg', '篡改字段: ' + tampered.join(','));
+              } else {
+                this.$set(item.params, 'verifyMsg', backendMsg || '链上数据不一致或网络异常');
+              }
+            }
+          }).catch(err => {
+            console.error("校验请求异常", err);
+            this.$set(item.params, 'verifyStatus', 'error');
+          });
+        }
+      });
     },
 
     /** 新增按钮操作 */

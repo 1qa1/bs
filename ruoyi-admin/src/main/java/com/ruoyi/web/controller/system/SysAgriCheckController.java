@@ -182,34 +182,8 @@ public class SysAgriCheckController extends BaseController {
     }
 
     // 查询单个信息
-    /*@GetMapping("/{cid}")
-    public AjaxResult getInfo(@PathVariable("cid") String cid) throws GatewayException {
-        AgriCheck dbCheck = service.selectCheckByCid(cid);
-        String pid = dbCheck.getPid();
-        AgriBCCheck bcCheck = service.queryCheck(cid);
-
-        String name = "未知产品";
-        if (pid != null) {
-            com.ruoyi.system.domain.AgriProduct p = productService.selectProductByPid(pid);
-            if (p != null) {
-                name = p.getName();
-            }
-        }
-
-        if (bcCheck.getParams() == null) {
-            bcCheck.setParams(new java.util.HashMap<>());
-        }
-        bcCheck.getParams().put("productName", name);
-
-        AgriTx tx = txService.selectAgriTxByPid(cid);
-        if (tx != null) {
-            bcCheck.setTxHash(tx.getTxid());
-            bcCheck.setTimeStamp(tx.getTimestamp());
-        }
-        return AjaxResult.success(bcCheck);
-    }*/
     @GetMapping("/{id}")
-    public AjaxResult getInfo(@PathVariable("id") Long id) {
+    /*public AjaxResult getInfo(@PathVariable("id") Long id) {
         AgriCheck dbCheck = service.selectAgriCheckById(id);
         if (dbCheck == null) {
             return AjaxResult.error("未找到相关检测记录");
@@ -222,6 +196,78 @@ public class SysAgriCheckController extends BaseController {
             dbCheck.setTxHash(tx.getTxid());
             dbCheck.setTimeStamp(tx.getTimestamp());
         }
+        return AjaxResult.success(dbCheck);
+    }*/
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        // 1. 从 MySQL 读取原始数据
+        AgriCheck dbCheck = service.selectAgriCheckById(id);
+        if (dbCheck == null) {
+            return AjaxResult.error("未找到相关检测记录");
+        }
+
+        // 2. 初始化校验状态
+        boolean isVerified = false; // 默认为未校验/校验失败
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 3. 只有状态为“已上链” (status == 1) 才进行校验
+        if (dbCheck.getStatus() != null && dbCheck.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 假设 service.queryCheck(cid) 已经实现了调用 Fabric SDK 的逻辑
+                AgriBCCheck bcCheck = service.queryCheck(dbCheck.getCid());
+
+                if (bcCheck != null) {
+                    // 4. 逐字段比对
+                    // 比对项目名称
+                    if (!Objects.equals(dbCheck.getProjName(), bcCheck.getProjName())) {
+                        tamperedFields.add("项目名称(本地:" + dbCheck.getProjName() + " vs 链上:" + bcCheck.getProjName() + ")");
+                    }
+                    // 比对检查类型
+                    if (!Objects.equals(dbCheck.getTypes(), bcCheck.getTypes())) {
+                        tamperedFields.add("检查类型");
+                    }
+                    // 比对检测结果 (核心字段)
+                    if (!Objects.equals(dbCheck.getResult(), bcCheck.getResult())) {
+                        tamperedFields.add("检测结果");
+                    }
+                    // 比对关联的产品ID
+                    /*if (!Objects.equals(dbCheck.getPid(), bcCheck.getPid())) {
+                        //tamperedFields.add("关联产品ID");
+                        tamperedFields.add("关联产品ID(本地:" + dbCheck.getPid() + " vs 链上:" + bcCheck.getPid() + ")");
+                    }*/
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                        log.warn("数据篡改报警: ID={}, CID={}, 差异={}", id, dbCheck.getCid(), tamperedFields);
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常，无法完成校验", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 5. 封装校验结果到 params (不影响数据库结构)
+        if (dbCheck.getParams() == null) {
+            dbCheck.setParams(new java.util.HashMap<>());
+        }
+        dbCheck.getParams().put("isVerified", isVerified);
+        dbCheck.getParams().put("verifyMsg", verifyMsg);
+        dbCheck.getParams().put("tamperedFields", tamperedFields);
+
+        // 6. 补充交易哈希和时间戳 (用于展示)
+        AgriTx tx = txService.selectAgriTxByPid(dbCheck.getCid());
+        if (tx != null) {
+            dbCheck.setTxHash(tx.getTxid());
+            dbCheck.setTimeStamp(tx.getTimestamp());
+        }
+
         return AjaxResult.success(dbCheck);
     }
 

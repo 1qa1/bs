@@ -237,25 +237,7 @@ public class SysAgriGrowController {
     }
 
     // 查询单个信息 根据gid
-    @GetMapping("/{id}")
-    /*
-     * public AjaxResult getInfo(@PathVariable("id") String gid) throws
-     * GatewayException {
-     * AgriGrow dbGrow = service.selectGrowByGid(gid);
-     * if (dbGrow == null) {
-     * return AjaxResult.error("未找到相关种植记录");
-     * }
-     * 
-     * // 如果需要补充链上的 Hash 和 TimeStamp (虽然数据库里也有)
-     * AgriTx tx = txService.selectAgriTxByPid(gid);
-     * if (tx != null) {
-     * dbGrow.setTxHash(tx.getTxid());
-     * dbGrow.setTimeStamp(tx.getTimestamp());
-     * }
-     * 
-     * return AjaxResult.success(dbGrow);
-     * }
-     */
+    /*@GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) { // 1. 参数类型改为 Long id
         // 2. 使用 selectAgriGrowById 查询数据库 ID
         AgriGrow dbGrow = service.selectAgriGrowById(id);
@@ -275,33 +257,78 @@ public class SysAgriGrowController {
         }
 
         return AjaxResult.success(dbGrow);
+    }*/
+
+    // 查询单个信息 (包含区块链真伪核验)
+    @GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        // 1. 从 MySQL 读取原始数据
+        AgriGrow dbGrow = service.selectAgriGrowById(id);
+
+        if (dbGrow == null) {
+            return AjaxResult.error("未找到相关种植记录");
+        }
+
+        // 2. 初始化校验状态
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 3. 只有状态为“已上链” (status == 1) 才进行校验
+        if (dbGrow.getStatus() != null && dbGrow.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 使用 GID 作为链上的 Key
+                AgriBCGrow bcGrow = service.queryGrow(dbGrow.getGid());
+
+                if (bcGrow != null) {
+                    // 4. 逐字段比对
+                    // 比对种植时间
+                    if (!Objects.equals(dbGrow.getPlantTime(), bcGrow.getPlantTime())) {
+                        tamperedFields.add("种植时间");
+                    }
+                    // 比对收获时间
+                    if (!Objects.equals(dbGrow.getReapTime(), bcGrow.getReapTime())) {
+                        tamperedFields.add("收获时间");
+                    }
+                    // 比对关联产品ID
+                    /*if (!Objects.equals(dbGrow.getPid(), bcGrow.getPid())) {
+                        //tamperedFields.add("关联产品ID");
+                        tamperedFields.add("关联产品ID(本地:" + dbGrow.getPid() + " vs 链上:" + bcGrow.getPid() + ")");
+                    }*/
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                        log.warn("数据篡改报警: ID={}, GID={}, 差异={}", id, dbGrow.getGid(), tamperedFields);
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常，无法完成校验", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 5. 封装校验结果到 params
+        if (dbGrow.getParams() == null) {
+            dbGrow.setParams(new java.util.HashMap<>());
+        }
+        dbGrow.getParams().put("isVerified", isVerified);
+        dbGrow.getParams().put("verifyMsg", verifyMsg);
+        dbGrow.getParams().put("tamperedFields", tamperedFields);
+
+        // 6. 补充交易哈希和时间戳 (用于展示)
+        AgriTx tx = txService.selectAgriTxByPid(dbGrow.getGid());
+        if (tx != null) {
+            dbGrow.setTxHash(tx.getTxid());
+            dbGrow.setTimeStamp(tx.getTimestamp());
+        }
+
+        return AjaxResult.success(dbGrow);
     }
-    /*
-     * public AjaxResult getInfo( @PathVariable("id") String gid) throws
-     * GatewayException {
-     * AgriGrow dbGrow = service.selectGrowByGid(gid);
-     * if (dbGrow == null) {
-     * return AjaxResult.error("未找到相关种植记录");
-     * }
-     * String pid = dbGrow.getPid();
-     * AgriBCGrow grow = service.queryGrow(gid);
-     * 
-     *//*
-        * String name = productService.selectProductByPid(pid).getName();
-        * grow.setPid(name);
-        * AgriTx tx = txService.selectAgriTxByPid(gid);
-        * grow.setPid(name);
-        * grow.setTxHash(tx.getTxid());
-        * grow.setTimeStamp(tx.getTimestamp());
-        *//*
-           * grow.setPid(pid);
-           * 
-           * AgriTx tx = txService.selectAgriTxByPid(gid);
-           * if (tx != null) {
-           * grow.setTxHash(tx.getTxid());
-           * grow.setTimeStamp(tx.getTimestamp());
-           * }
-           * return AjaxResult.success(grow);
-           * }
-           */
+
 }

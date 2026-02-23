@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -148,12 +149,78 @@ public class SysAgriOfficialController {
     }
 
     // 查询单个信息 (根据数据库 ID)
+    /*@GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        AgriOfficial dbOfficial = service.selectAgriOfficialById(id);
+        if (dbOfficial == null) {
+            return AjaxResult.error("未找到相关官方检查记录");
+        }
+
+        // 补充链上信息
+        String oid = dbOfficial.getOid();
+        AgriTx tx = txService.selectAgriTxByPid(oid);
+        if (tx != null) {
+            dbOfficial.setTxHash(tx.getTxid());
+            dbOfficial.setTimeStamp(tx.getTimestamp());
+        }
+        return AjaxResult.success(dbOfficial);
+    }*/
+    // 查询单个信息 (根据数据库 ID)
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         AgriOfficial dbOfficial = service.selectAgriOfficialById(id);
         if (dbOfficial == null) {
             return AjaxResult.error("未找到相关官方检查记录");
         }
+
+        // --- 核心修改：增加读时校验 (Verify-on-Read) ---
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 只有状态为“已上链” (status == 1) 才进行校验
+        if (dbOfficial.getStatus() != null && dbOfficial.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 假设 service 已经实现了 queryOfficial 方法
+                AgriBCOfficialCheck bcOfficial = service.queryOfficial(dbOfficial.getOid());
+
+                if (bcOfficial != null) {
+                    // 逐字段比对
+                    if (!Objects.equals(dbOfficial.getReportTime(), bcOfficial.getReportTime())) {
+                        tamperedFields.add("抽检时间");
+                    }
+                    if (!Objects.equals(dbOfficial.getReportResult(), bcOfficial.getReportResult())) {
+                        tamperedFields.add("检查结果");
+                    }
+                    // 比对关联产品ID
+                    /*if (!Objects.equals(dbOfficial.getPid(), bcOfficial.getPid())) {
+                        tamperedFields.add("关联产品ID(本地:" + dbOfficial.getPid() + " vs 链上:" + bcOfficial.getPid() + ")");
+                    }*/
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                        log.warn("数据篡改报警: ID={}, OID={}, 差异={}", id, dbOfficial.getOid(), tamperedFields);
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常，无法完成校验", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 封装校验结果到 params
+        if (dbOfficial.getParams() == null) {
+            dbOfficial.setParams(new java.util.HashMap<>());
+        }
+        dbOfficial.getParams().put("isVerified", isVerified);
+        dbOfficial.getParams().put("verifyMsg", verifyMsg);
+        dbOfficial.getParams().put("tamperedFields", tamperedFields);
 
         // 补充链上信息
         String oid = dbOfficial.getOid();

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -146,12 +147,99 @@ public class SysAgriSellController {
     }
 
     // 查询单个详情 (根据数据库 ID)
+    /*@GetMapping("/{id}")
+    public AjaxResult getInfo(@PathVariable("id") Long id) {
+        AgriSell dbSell = service.selectAgriSellById(id);
+        if (dbSell == null) {
+            return AjaxResult.error("未找到相关售卖记录");
+        }
+
+        // 补充链上信息
+        String sid = dbSell.getSid();
+        AgriTx tx = txService.selectAgriTxByPid(sid);
+        if (tx != null) {
+            dbSell.setTxHash(tx.getTxid());
+            dbSell.setTimeStamp(tx.getTimestamp());
+        }
+
+        return AjaxResult.success(dbSell);
+    }*/
+    // 查询单个详情 (根据数据库 ID)
     @GetMapping("/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         AgriSell dbSell = service.selectAgriSellById(id);
         if (dbSell == null) {
             return AjaxResult.error("未找到相关售卖记录");
         }
+
+        // --- 核心修改：增加读时校验 (Verify-on-Read) ---
+        boolean isVerified = false;
+        List<String> tamperedFields = new ArrayList<>();
+        String verifyMsg = "数据未上链，无法校验";
+
+        // 只有状态为“已上链” (status == 1) 才进行校验
+        if (dbSell.getStatus() != null && dbSell.getStatus() == 1) {
+            try {
+                // 【核心步骤】从区块链获取“真实”数据
+                // 使用 SID 作为链上的 Key
+                // 假设 service 已经实现了 querySell 方法
+                AgriBCSell bcSell = service.querySell(dbSell.getSid());
+
+                if (bcSell != null) {
+                    // 逐字段比对
+                    // 比对关联产品ID
+                    /*if (!Objects.equals(dbSell.getPid(), bcSell.getPid())) {
+                        tamperedFields.add("关联产品ID(本地:" + dbSell.getPid() + " vs 链上:" + bcSell.getPid() + ")");
+                    }*/
+                    // 比对到达时间
+                    if (!Objects.equals(dbSell.getArrivalTime(), bcSell.getArrivalTime())) {
+                        tamperedFields.add("到达时间");
+                    }
+                    // 比对售卖数量
+                    // 注意类型匹配，如果一个是String一个是Integer，需要转换
+                    if (!Objects.equals(dbSell.getAmount(), bcSell.getAmount())) {
+                        tamperedFields.add("售卖数量");
+                    }
+                    // 比对检验时间
+                    if (!Objects.equals(dbSell.getCheckTime(), bcSell.getCheckTime())) {
+                        tamperedFields.add("检验时间");
+                    }
+                    // 比对检验项目
+                    if (!Objects.equals(dbSell.getCheckName(), bcSell.getCheckName())) {
+                        tamperedFields.add("检验项目");
+                    }
+                    // 比对检验结果
+                    if (!Objects.equals(dbSell.getCheckResult(), bcSell.getCheckResult())) {
+                        tamperedFields.add("检验结果");
+                    }
+                    // 比对商品规格
+                    if (!Objects.equals(dbSell.getTp(), bcSell.getTp())) {
+                        tamperedFields.add("商品规格");
+                    }
+
+                    if (tamperedFields.isEmpty()) {
+                        isVerified = true;
+                        verifyMsg = "校验通过：数据真实有效";
+                    } else {
+                        verifyMsg = "警告：发现数据篡改！";
+                        log.warn("数据篡改报警: ID={}, SID={}, 差异={}", id, dbSell.getSid(), tamperedFields);
+                    }
+                } else {
+                    verifyMsg = "校验失败：链上未找到对应数据";
+                }
+            } catch (Exception e) {
+                log.error("区块链连接异常，无法完成校验", e);
+                verifyMsg = "校验中断：区块链网络连接超时";
+            }
+        }
+
+        // 封装校验结果到 params
+        if (dbSell.getParams() == null) {
+            dbSell.setParams(new java.util.HashMap<>());
+        }
+        dbSell.getParams().put("isVerified", isVerified);
+        dbSell.getParams().put("verifyMsg", verifyMsg);
+        dbSell.getParams().put("tamperedFields", tamperedFields);
 
         // 补充链上信息
         String sid = dbSell.getSid();
