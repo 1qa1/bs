@@ -163,21 +163,21 @@
         </div>
       </el-dialog>
     </div>
-  </template>
+</template>
 
-  <script>
+<script>
 import { queryGrowByPid,addGrow,updateGrow,delGrow,getGrow } from "@/api/plant/grow";
 import {listProduct} from "@/api/plant/product";
 export default {
   name: "grow",
   data() {
     return {
-        // 修改窗口的产品名称
-        pdName:null,
-        // 建议
-        suggestion:null,
-        /*product:{},*/
-        product: [],
+      // 修改窗口的产品名称
+      pdName:null,
+      // 建议
+      suggestion:null,
+      /*product:{},*/
+      product: [],
       // 遮罩层
       loading: false,
       // 选中数组
@@ -196,41 +196,36 @@ export default {
       open: false,
       // 查询参数
       queryParams: {
-       pid:null,
+        pid:null,
       },
       // 表单参数
       form: {},
       // 表单校验
       rules: {
       },
-      growList:[]
+      growList:[],
+      // 新增：轮询定时器
+      refreshTimer: null
     };
   },
   created() {
-   this.getProductList();
-    this.handleQuery(); // 【新增】页面加载时自动查询所有数据
+    this.getProductList();
+    this.handleQuery(); // 页面加载时自动查询所有数据
+  },
+  // 新增：组件销毁前清除定时器
+  beforeDestroy() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
   },
   methods: {
     //得到数据
-    /*getProductList() {
-        this.loading = true;
-        listProduct().then( response => {
-            this.product = response.data;
-            this.loading = false;
-            var maps = []
-
-            for ( var i = 0 ; i < this.product.length ; i++){
-                var p = this.product[i];
-                maps.push({"value":p.productName,"id":p.id});
-            }
-            this.product = maps;
-        })
-    },*/
     getProductList() {
       this.loading = true;
       // 建议传入分页参数，否则后端默认可能只返回第一页（10条）数据
       listProduct({ pageNum: 1, pageSize: 1000 }).then( response => {
-        // 【修改1】后端返回的是分页对象，数据在 rows 中，而不是 data
+        // 后端返回的是分页对象，数据在 rows 中
         this.product = response.rows;
         this.loading = false;
         var maps = []
@@ -239,8 +234,6 @@ export default {
         if (this.product && this.product.length > 0) {
           for ( var i = 0 ; i < this.product.length ; i++){
             var p = this.product[i];
-            // 【修改2】p.productName -> p.name (后端实体类字段是 name)
-            // 【修改3】p.id -> p.pid (通常业务逻辑关联使用的是 UUID pid)
             maps.push({"value": p.name, "id": p.pid});
           }
         }
@@ -248,32 +241,23 @@ export default {
       })
     },
     querySearch(queryString, cb) {
-        var grows = this.product;
-        var results = queryString ? grows.filter(this.createFilter(queryString)) : grows;
-        // 调用 callback 返回建议列表的数据
-        cb(results);
-      },
-      createFilter(queryString) {
-        return (grow) => {
-          return (grow.value.toLowerCase().indexOf(queryString.toLowerCase()) > -1);
-        };
-      },
-      handleSelect(item) {
-        this.queryParams.pid = item.id;
-      },
+      var grows = this.product;
+      var results = queryString ? grows.filter(this.createFilter(queryString)) : grows;
+      // 调用 callback 返回建议列表的数据
+      cb(results);
+    },
+    createFilter(queryString) {
+      return (grow) => {
+        return (grow.value.toLowerCase().indexOf(queryString.toLowerCase()) > -1);
+      };
+    },
+    handleSelect(item) {
+      this.queryParams.pid = item.id;
+    },
 
-      selectChange(item) {
-        this.form.pid = item;
-        // let prod = null;
-        // for(let i = 0 ; i < this.product.length ; i++){
-        //   prod = this.product[i];
-        //   if ( prod["id"] === item ) {
-        //     // this.form.name = prod["value"];
-        //     this.$set(this.form,'name',prod["value"]);
-        //     console.log(this.form);
-        //   }
-        // }
-      },
+    selectChange(item) {
+      this.form.pid = item;
+    },
     // 取消按钮
     cancel() {
       this.open = false;
@@ -287,21 +271,17 @@ export default {
       this.resetForm("form");
     },
 
-    /** 搜索按钮操作 */
-    /*handleQuery() {
-      this.loading = true;
-      // 【修改】如果 queryParams.pid 为空，则传递 'all' 字符串给后端
-      const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
+    /** 搜索按钮操作 (修改版支持轮询) */
+    handleQuery(isSilent = false) {
+      // 如果不是静默刷新，显示 loading 并清除旧定时器
+      if (!isSilent) {
+        this.loading = true;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
+      }
 
-      queryGrowByPid(pidToQuery).then(response => {
-        // 现有接口返回的是 AjaxResult (data)，不是 TableDataInfo (rows)
-        this.growList = response.data;
-        this.total = this.growList.length;
-        this.loading = false;
-      });
-    },*/
-    handleQuery() {
-      this.loading = true;
       // 如果 queryParams.pid 为空，则传递 'all' 字符串给后端
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
 
@@ -320,13 +300,31 @@ export default {
         });
 
         this.total = this.growList.length;
-        this.loading = false;
+
+        // 关闭 loading
+        if (!isSilent) {
+          this.loading = false;
+        }
 
         // 2. 触发异步校验
         this.verifyListItems();
+
+        // ==================== 新增：自动轮询逻辑 ====================
+        // 检查当前页是否有状态为 0 (上链中) 的数据
+        const hasProcessingItem = this.growList.some(item => item.status === 0);
+
+        // 如果有正在处理的数据，开启轮询
+        if (hasProcessingItem) {
+          if (this.refreshTimer) clearTimeout(this.refreshTimer);
+          this.refreshTimer = setTimeout(() => {
+            this.handleQuery(true); // 静默刷新
+          }, 3000);
+        }
+        // ==========================================================
       });
     },
-    /** 异步逐个校验列表项 (新增方法) */
+
+    /** 异步逐个校验列表项 */
     verifyListItems() {
       this.growList.forEach(item => {
         // 只校验状态为“已上链”且标记为 loading 的数据
@@ -347,7 +345,6 @@ export default {
               if (tampered && tampered.length > 0) {
                 this.$set(item.params, 'verifyMsg', '篡改字段: ' + tampered.join(','));
               } else {
-                //this.$set(item.params, 'verifyMsg', '链上数据不一致或网络异常');
                 this.$set(item.params, 'verifyMsg', backendMsg || '链上数据不一致或网络异常');
               }
             }
@@ -365,6 +362,11 @@ export default {
       this.resetForm("queryForm");
       this.suggestion = null;
       this.queryParams.pid = null;
+      // 清除定时器
+      if (this.refreshTimer) {
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = null;
+      }
       this.handleQuery();
     },
     // 多选框选中数据
@@ -386,7 +388,6 @@ export default {
       getGrow(id).then(response => {
         this.form = response.data;
         this.pdName = this.form.pid;
-        // this.form.name = this.form.pid;
         this.open = true;
         this.title = "修改种植信息";
       });
@@ -404,7 +405,7 @@ export default {
               this.handleQuery();
             });
           } else {
-           let pid = this.form.pid;
+            let pid = this.form.pid;
             addGrow(this.form).then(response => {
               this.$modal.msgSuccess("新增成功");
               this.open = false;
@@ -433,8 +434,6 @@ export default {
         ...this.queryParams
       }, `grow_${new Date().getTime()}.xlsx`)
     },
-
-
   }
 };
 </script>

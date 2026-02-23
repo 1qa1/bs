@@ -254,38 +254,24 @@ export default {
       // 表单校验
       rules: {
       },
-      checkList:[]
+      checkList:[],
+      // 新增：轮询定时器
+      refreshTimer: null
     };
   },
   created() {
     this.getProductList();
     this.handleQuery(); // 页面加载时自动查询
   },
+  // 新增：组件销毁前清除定时器
+  beforeDestroy() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  },
   methods: {
     /**得到product数据 */
-    /**===================================这些是不需要改的部分==========================*/
-    /*getProductList() {
-      this.loading = true;
-      queryGrowByPid('all').then( response => {
-        this.product = response.data;
-        this.loading = false;
-        let maps = []
-
-        if (this.product && this.product.length > 0) {
-          for ( let i = 0 ; i < this.product.length ; i++){
-            let p = this.product[i];
-            let displayName = (p.params && p.params.productName) ? p.params.productName : "未知产品";
-            displayName += " (" + p.plantTime + ")";
-            maps.push({
-                "value": displayName,
-                "id": p.gid,
-                "pid": p.pid
-            });
-          }
-        }
-        this.product = maps;
-      })
-    },*/
     getProductList() {
       this.loading = true;
       queryGrowByPid('all').then( response => {
@@ -321,7 +307,7 @@ export default {
       };
     },
     handleSelect(item) {
-      this.queryParams.pid = item.pid;
+      this.queryParams.pid = item.id; // 使用 GID 进行精确批次查询
     },
     selectChange(item) {
       this.form.gid = item; // 绑定 GID
@@ -349,6 +335,11 @@ export default {
       this.resetForm("queryForm");
       this.suggestion = null;
       this.queryParams.pid = null;
+      // 清除定时器
+      if (this.refreshTimer) {
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = null;
+      }
       this.handleQuery();
     },
     // 多选框选中数据
@@ -376,7 +367,7 @@ export default {
     handleChange(file,fileList){
       this.fileList = fileList;
 
-    //  开始上传
+      //  开始上传
       this.confirmUploads();
 
     },
@@ -389,24 +380,23 @@ export default {
         this.form.uploadsUrl = "http://localhost/dev-api/" + response.url;
       });
 
-    this.$message({
-      message:"上传报告成功",
-      duration:1000
-    })
-    },
-    /** 搜索按钮操作 */
-    /*handleQuery() {
-      this.loading = true;
-      // 如果 pid 为空，传递 'all'
-      const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
-      queryCheckByPid(pidToQuery).then( response => {
-        this.checkList = response.data;
-        this.total = this.checkList.length;
-        this.loading = false;
+      this.$message({
+        message:"上传报告成功",
+        duration:1000
       })
-    },*/
-    handleQuery() {
-      this.loading = true;
+    },
+
+    /** 搜索按钮操作 (修改版支持轮询) */
+    handleQuery(isSilent = false) {
+      // 如果不是静默刷新，显示 loading 并清除旧定时器
+      if (!isSilent) {
+        this.loading = true;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
+      }
+
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
 
       queryCheckByPid(pidToQuery).then(response => {
@@ -426,10 +416,27 @@ export default {
         });
 
         this.total = this.checkList.length;
-        this.loading = false;
+
+        // 关闭 loading
+        if (!isSilent) {
+          this.loading = false;
+        }
 
         // 3. 列表渲染完成后，立即触发异步校验
         this.verifyListItems();
+
+        // ==================== 新增：自动轮询逻辑 ====================
+        // 检查当前页是否有状态为 0 (上链中) 的数据
+        const hasProcessingItem = this.checkList.some(item => item.status === 0);
+
+        // 如果有正在处理的数据，开启轮询
+        if (hasProcessingItem) {
+          if (this.refreshTimer) clearTimeout(this.refreshTimer);
+          this.refreshTimer = setTimeout(() => {
+            this.handleQuery(true); // 静默刷新
+          }, 3000);
+        }
+        // ==========================================================
       });
     },
 
@@ -444,6 +451,8 @@ export default {
           getCheck(item.id).then(res => {
             const verified = res.data.params.isVerified;
             const tampered = res.data.params.tamperedFields;
+            // 获取后端返回的具体消息
+            const backendMsg = res.data.params.verifyMsg;
 
             // 更新视图状态
             if (verified) {
@@ -455,7 +464,7 @@ export default {
               if (tampered && tampered.length > 0) {
                 this.$set(item.params, 'verifyMsg', '篡改字段: ' + tampered.join(','));
               } else {
-                this.$set(item.params, 'verifyMsg', '链上数据不一致或网络异常');
+                this.$set(item.params, 'verifyMsg', backendMsg || '链上数据不一致或网络异常');
               }
             }
           }).catch(err => {
@@ -475,22 +484,6 @@ export default {
       this.form.gid = null;
     },
     /** 修改按钮操作 */
-    /*handleUpdate(row) {
-      this.reset();
-      const id = row.id || this.ids
-      getCheck(id).then(response => {
-        this.form = response.data;
-        // 回显
-        const match = this.product.find(p => p.id === this.form.gid);
-        if (match) {
-            this.pdName = match.value;
-        } else {
-             this.pdName = this.form.pid;
-        }
-        this.open = true;
-        this.title = "修改检查信息";
-      });
-    },*/
     handleUpdate(row) {
       this.reset();
       // 优先使用行内 ID，否则使用选中数组的第一个 ID
@@ -513,8 +506,8 @@ export default {
       this.$refs["form"].validate(valid => {
         if (valid) {
           if (!this.form.gid) {
-             this.$modal.msgError("请选择种植批次");
-             return;
+            this.$modal.msgError("请选择种植批次");
+            return;
           }
 
           if (this.form.id != null) {

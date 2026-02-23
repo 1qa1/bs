@@ -222,11 +222,20 @@ export default {
       // 表单参数
       form: {},
       rules: {},
-      productList: []
+      productList: [],
+      // 新增：轮询定时器
+      refreshTimer: null,
     };
   },
   created() {
     this.getList();
+  },
+  // 新增销毁钩子
+  beforeDestroy() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
   },
   methods: {
     /** 查询列表 */
@@ -239,7 +248,7 @@ export default {
         this.loading = false;
       });
     },*/
-    getList() {
+    /*getList() {
       this.loading = true;
       listProduct(this.queryParams).then(response => {
         let rawList = response.rows;
@@ -260,6 +269,54 @@ export default {
 
         // 2. 触发异步校验
         this.verifyListItems();
+      });
+    },*/
+    /** 查询列表 */
+    getList(isSilent = false) {
+      // 如果不是静默刷新（即用户手动搜索或首次加载），则显示 loading
+      if (!isSilent) {
+        this.loading = true;
+      }
+
+      listProduct(this.queryParams).then(response => {
+        let rawList = response.rows;
+
+        // 1. 初始化校验状态
+        this.productList = rawList.map(item => {
+          if (!item.params) {
+            item.params = {};
+          }
+          // 如果状态是已上链(1)，则标记为 loading，否则为 none
+          item.params.verifyStatus = (item.status === 1) ? 'loading' : 'none';
+          item.params.verifyMsg = '';
+          return item;
+        });
+
+        this.total = response.total;
+
+        // 关闭 loading
+        if (!isSilent) {
+          this.loading = false;
+        }
+
+        // 2. 触发异步校验
+        this.verifyListItems();
+
+        // ==================== 新增：自动轮询逻辑 ====================
+        // 检查当前页是否有状态为 0 (上链中) 的数据
+        const hasProcessingItem = this.productList.some(item => item.status === 0);
+
+        // 如果有正在处理的数据，且当前没有定时器在运行，则开启轮询
+        if (hasProcessingItem) {
+          // 先清除可能存在的旧定时器
+          if (this.refreshTimer) clearTimeout(this.refreshTimer);
+
+          // 设置 3秒 后再次查询 (静默模式)
+          this.refreshTimer = setTimeout(() => {
+            this.getList(true);
+          }, 3000);
+        }
+        // ==========================================================
       });
     },
     /** 异步逐个校验列表项 (新增方法) */

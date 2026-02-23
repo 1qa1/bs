@@ -214,12 +214,21 @@ export default {
       // 表单校验
       rules: {
       },
-      medicineList:[]
+      medicineList:[],
+      // 新增：轮询定时器
+      refreshTimer: null
     };
   },
   created() {
     this.getProductList();
     this.handleQuery(); // 页面加载时自动查询
+  },
+  // 新增：组件销毁前清除定时器
+  beforeDestroy() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
   },
   methods: {
     /**得到product数据 */
@@ -336,8 +345,16 @@ export default {
         this.loading = false;
       })
     },*/
-    handleQuery() {
-      this.loading = true;
+    handleQuery(isSilent = false) {
+      // 如果不是静默刷新，显示 loading 并清除旧定时器
+      if (!isSilent) {
+        this.loading = true;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
+      }
+
       // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
 
@@ -356,10 +373,27 @@ export default {
         });
 
         this.total = this.medicineList.length;
-        this.loading = false;
+
+        // 关闭 loading
+        if (!isSilent) {
+          this.loading = false;
+        }
 
         // 2. 触发异步校验
         this.verifyListItems();
+
+        // ==================== 新增：自动轮询逻辑 ====================
+        // 检查当前页是否有状态为 0 (上链中) 的数据
+        const hasProcessingItem = this.medicineList.some(item => item.status === 0);
+
+        // 如果有正在处理的数据，开启轮询
+        if (hasProcessingItem) {
+          if (this.refreshTimer) clearTimeout(this.refreshTimer);
+          this.refreshTimer = setTimeout(() => {
+            this.handleQuery(true); // 静默刷新
+          }, 3000);
+        }
+        // ==========================================================
       })
     },
 

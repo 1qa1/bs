@@ -216,12 +216,21 @@ export default {
       // 表单校验
       rules: {
       },
-      FertilizerList:[]
+      FertilizerList:[],
+      // 新增：轮询定时器
+      refreshTimer: null
     };
   },
   created() {
     this.getProductList();
     this.handleQuery(); // 页面加载时自动查询
+  },
+  // 新增：组件销毁前清除定时器
+  beforeDestroy() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
   },
   methods: {
     /**得到product数据 */
@@ -243,9 +252,9 @@ export default {
 
             // 映射：value -> 显示文本, id -> gid (种植批次ID), pid -> real pid
             maps.push({
-                "value": displayName,
-                "id": p.gid,
-                "pid": p.pid
+              "value": displayName,
+              "id": p.gid,
+              "pid": p.pid
             });
           }
         }
@@ -292,6 +301,11 @@ export default {
       this.resetForm("queryForm");
       this.suggestion = null;
       this.queryParams.pid = null;
+      // 清除定时器
+      if (this.refreshTimer) {
+        clearTimeout(this.refreshTimer);
+        this.refreshTimer = null;
+      }
       this.handleQuery();
     },
     // 多选框选中数据
@@ -300,19 +314,18 @@ export default {
       this.single = selection.length!==1
       this.multiple = !selection.length
     },
-    /** 搜索按钮操作 */
-    /*handleQuery() {
-      this.loading = true;
-      // 如果 pid 为空，传递 'all'
-      const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
-      queryFertilizerByPid(pidToQuery).then( response => {
-        this.FertilizerList = response.data;
-        this.total = this.FertilizerList.length;
-        this.loading = false;
-      })
-    },*/
-    handleQuery() {
-      this.loading = true;
+
+    /** 搜索按钮操作 (修改版支持轮询) */
+    handleQuery(isSilent = false) {
+      // 如果不是静默刷新，显示 loading 并清除旧定时器
+      if (!isSilent) {
+        this.loading = true;
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
+      }
+
       // 如果 pid 为空，传递 'all'
       const pidToQuery = this.queryParams.pid ? this.queryParams.pid : 'all';
 
@@ -331,10 +344,27 @@ export default {
         });
 
         this.total = this.FertilizerList.length;
-        this.loading = false;
+
+        // 关闭 loading
+        if (!isSilent) {
+          this.loading = false;
+        }
 
         // 2. 触发异步校验
         this.verifyListItems();
+
+        // ==================== 新增：自动轮询逻辑 ====================
+        // 检查当前页是否有状态为 0 (上链中) 的数据
+        const hasProcessingItem = this.FertilizerList.some(item => item.status === 0);
+
+        // 如果有正在处理的数据，开启轮询
+        if (hasProcessingItem) {
+          if (this.refreshTimer) clearTimeout(this.refreshTimer);
+          this.refreshTimer = setTimeout(() => {
+            this.handleQuery(true); // 静默刷新
+          }, 3000);
+        }
+        // ==========================================================
       })
     },
 
@@ -348,6 +378,8 @@ export default {
           getFertilizer(item.id).then(res => {
             const verified = res.data.params.isVerified;
             const tampered = res.data.params.tamperedFields;
+            // 获取后端返回的具体消息
+            const backendMsg = res.data.params.verifyMsg;
 
             // 更新视图状态
             if (verified) {
@@ -358,7 +390,7 @@ export default {
               if (tampered && tampered.length > 0) {
                 this.$set(item.params, 'verifyMsg', '篡改字段: ' + tampered.join(','));
               } else {
-                this.$set(item.params, 'verifyMsg', '链上数据不一致或网络异常');
+                this.$set(item.params, 'verifyMsg', backendMsg || '链上数据不一致或网络异常');
               }
             }
           }).catch(err => {
@@ -387,9 +419,9 @@ export default {
         // 回显逻辑
         const match = this.product.find(p => p.id === this.form.gid);
         if (match) {
-            this.pdName = match.value;
+          this.pdName = match.value;
         } else {
-             this.pdName = this.form.pid;
+          this.pdName = this.form.pid;
         }
         this.open = true;
         this.title = "修改肥料信息";
@@ -400,8 +432,8 @@ export default {
       this.$refs["form"].validate(valid => {
         if (valid) {
           if (!this.form.gid) {
-             this.$modal.msgError("请选择种植批次");
-             return;
+            this.$modal.msgError("请选择种植批次");
+            return;
           }
 
           if (this.form.id != null) {
