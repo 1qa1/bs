@@ -212,7 +212,7 @@ export default {
     return {
       //code_url:"https://pic.imgdb.cn/item/63b0392a2bbf0e79942040fe.png",
       code_url: require("@/assets/images/web.jpg"),
-      contents:"http://192.168.133.43/show?id=",
+      contents:"http://192.168.3.67/show?id=",
       defaultProps: {
         children: 'children',
         label: 'label'
@@ -268,10 +268,21 @@ export default {
   methods: {
 
     //获取url
-    getPageUrls(){
+    /*getPageUrls(){
       let ori_url = window.location.href;
       let pid = ori_url.split("=")[1];
       this.queryParams.pid = pid;
+    },*/
+    getPageUrls() {
+      // Vue Router 会自动解析 URL 中的 query 参数
+      // 假设 URL 是 /show?id=xxx
+      const pid = this.$route.query.id;
+
+      if (pid) {
+        this.queryParams.pid = pid;
+      } else {
+        this.$modal.msgError("未检测到商品ID，无法加载数据");
+      }
     },
 
     cancel() {
@@ -281,19 +292,47 @@ export default {
     },
 
     //查看检测报告
-    handleImages(row){
+    /*handleImages(row){
       this.url = row.uploadsUrl;
-      this.url = this.url.replace("localhost","192.168.133.43");
+      this.url = this.url.replace("localhost","192.168.3.67");
+      this.is_open = true;
+      this.title = "查看检测报告";
+    },*/
+    handleImages(row){
+      // 建议直接使用后端返回的相对路径，配合 Vue 环境变量拼接
+      // 例如: this.url = process.env.VUE_APP_BASE_API + row.uploadsUrl;
+
+      // 如果必须替换 IP (不推荐，但为了兼容你现有逻辑):
+      this.url = row.uploadsUrl;
+      // 只有当 url 包含 localhost 时才替换，且替换为当前访问的 host，而不是写死 192.168.3.67
+      if(this.url && this.url.includes('localhost')) {
+        this.url = this.url.replace("localhost", window.location.hostname);
+      }
+
       this.is_open = true;
       this.title = "查看检测报告";
     },
-    handleOfficialImages(row) {
+
+    /*handleOfficialImages(row) {
       this.url = row.reportUploadsUrl;
-      this.url = this.url.replace("localhost","192.168.133.43");
+      this.url = this.url.replace("localhost","192.168.3.67");
       console.log(this.url);
       this.is_open = true;
       this.title = "查看检测报告";
+    },*/
+    handleOfficialImages(row) {
+      this.url = row.reportUploadsUrl;
+
+      // 动态替换 localhost 为当前访问的域名/IP，避免写死 192.168.3.67
+      // 这样无论手机通过什么 IP 访问，都能正确加载图片
+      if (this.url && this.url.includes('localhost')) {
+        this.url = this.url.replace("localhost", window.location.hostname);
+      }
+
+      this.is_open = true;
+      this.title = "查看检测报告";
     },
+
     /**得到product数据 */
     /**这些是不需要改的部分*/
     getProductList() {
@@ -345,7 +384,7 @@ export default {
      * ======================================这些是需要改的部分=================================================================
      */
     /** 搜索按钮操作 */
-    handleQuery(  ) {
+    /*handleQuery(  ) {
       this.queryParams.pageNum = 1;
       this.loading = true;
       queryAllInformationByPid( this.queryParams.pid ).then( response => {
@@ -359,7 +398,33 @@ export default {
         this.code_url = "http://localhost:8080" + response.url;
         //this.code_url = "http://192.168.133.43:8080" + response.url;
       })
+    },*/
+    /** 搜索按钮操作 */
+    handleQuery() {
+      // 手机端只需要查询数据，不需要生成二维码
+      if (!this.queryParams.pid) {
+        return;
+      }
+
+      this.loading = true;
+      queryAllInformationByPid(this.queryParams.pid).then(response => {
+        console.log(response.data);
+        this.infoList = response.data;
+        this.loading = false;
+      }).catch(() => {
+        this.loading = false;
+      });
+
+      // 【删除】手机端不需要下面这段生成二维码的代码，这会导致逻辑混乱
+      /*
+      let content  = this.contents + this.queryParams.pid;
+      queryQTCode(content).then( response => {
+        this.code_url = "http://localhost:8080" + response.url;
+      })
+      */
     },
+
+
   },
 };
 </script>

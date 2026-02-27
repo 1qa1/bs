@@ -294,4 +294,22 @@ public class SysAgriCheckController extends BaseController {
             return AjaxResult.error("图片上传失败，请联系管理员解决");
         }
     }
+
+    /**
+     * 获取服务器局域网IP
+     * 供前端生成二维码使用，解决前端无法获取真实IP的问题
+     */
+    @GetMapping("/get-server-ip")
+    public AjaxResult getServerIp() {
+        try {
+            // 获取本机 IP 地址
+            java.net.InetAddress inetAddress = java.net.InetAddress.getLocalHost();
+            String ip = inetAddress.getHostAddress();
+            return AjaxResult.success("操作成功", ip);
+        } catch (Exception e) {
+            return AjaxResult.error("获取IP失败");
+        }
+    }
+
+
 }

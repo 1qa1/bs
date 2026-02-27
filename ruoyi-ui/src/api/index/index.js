@@ -16,3 +16,11 @@ export function queryQTCode(  param ) {
     data:param,
   })
 }
+
+// 【新增】获取服务器IP
+export function getServerIp() {
+  return request({
+    url: '/system/check/get-server-ip',
+    method: 'get'
+  })
+}

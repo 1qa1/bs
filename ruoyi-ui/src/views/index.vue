@@ -241,14 +241,14 @@
 
 <script>
 import {listProduct} from  "@/api/plant/product";
-import {queryAllInformationByPid,queryQTCode} from "@/api/index/index";
+import {queryAllInformationByPid,queryQTCode, getServerIp } from "@/api/index/index";
 export default {
   name: "Index",
   data() {
     return {
       //code_url:"https://pic.imgdb.cn/item/63b0392a2bbf0e79942040fe.png",
       code_url: require("@/assets/images/web.jpg"),
-      contents:"http://192.168.133.43/show?id=",
+      contents:"http://192.168.3.67/show?id=",
       defaultProps: {
         children: 'children',
         label: 'label'
@@ -430,23 +430,6 @@ export default {
      */
     /** 搜索按钮操作 */
     /*handleQuery() {
-      this.queryParams.pageNum = 1;
-      this.loading = true;
-      queryAllInformationByPid( this.queryParams.pid).then( response => {
-        console.log(response.data);
-        this.infoList = response.data;
-        this.loading = false;
-      });
-      //调用了 queryQTCode(content) 方法，用于生成二维码
-      // 二维码的内容是基于商品 ID 拼接而成的 URL，生成后的二维码图片地址会被赋值给 code_url，并在页面右上角展示
-      let content  = this.contents + this.queryParams.pid;
-      queryQTCode(content).then( response => {
-        this.code_url = "http://localhost:8080" + response.url;
-        console.log("xxxx",this.code_url);
-      })
-    },*/
-    handleQuery() {
-      // 增加校验：必须先选择一个商品（获取到 pid）才能查询
       if (!this.queryParams.pid) {
         this.$modal.msgWarning("请先从下拉框中选择一个商品");
         return;
@@ -455,28 +438,75 @@ export default {
       this.queryParams.pageNum = 1;
       this.loading = true;
 
-      // 1. 查询链上信息
+      // 1. 查询数据
       queryAllInformationByPid(this.queryParams.pid).then(response => {
-        console.log(response.data);
         this.infoList = response.data;
         this.loading = false;
 
-        // 2. 只有查询成功才生成二维码
-        let content = this.contents + this.queryParams.pid;
+        // 2. 动态生成二维码内容
+        // window.location.host 会自动获取当前访问的 IP:端口 (例如 192.168.3.67:80)
+        // 假设 show 页面在路由中配置为 /show
+        let baseUrl = window.location.protocol + "//" + window.location.host;
+        // 最终生成: http://192.168.3.67:80/show?id=UUID
+        let content = `${baseUrl}/show?id=${this.queryParams.pid}`;
+
         queryQTCode(content).then(res => {
-          this.code_url = "http://localhost:8080" + res.url;
-          console.log("二维码地址", this.code_url);
+          // 注意：这里后端返回的 res.url 如果是相对路径，需要拼接后端服务地址
+          // 如果前后端分离，这里可能需要配置具体的后端基准地址，或者通过环境变量获取
+          // 假设 process.env.VUE_APP_BASE_API 是后端地址
+          this.code_url = process.env.VUE_APP_BASE_API + res.url;
         });
 
       }).catch(error => {
-        console.error("查询失败:", error);
         this.loading = false;
-        // 清空数据，避免显示残留信息
-        this.infoList = {
-          product: { id: null, plantCity: null, tp: null, productName: null, onlyCode: null, txHash: null, timeStamp: null }
-        };
+      });
+    },*/
+    handleQuery() {
+      if (!this.queryParams.pid) {
+        this.$modal.msgWarning("请先从下拉框中选择一个商品");
+        return;
+      }
+
+      this.queryParams.pageNum = 1;
+      this.loading = true;
+
+      // 1. 查询商品详细信息
+      queryAllInformationByPid(this.queryParams.pid).then(response => {
+        this.infoList = response.data;
+        this.loading = false;
+
+        // 2. 【核心修改】获取后端真实IP，生成二维码
+        getServerIp().then(res => {
+          // 获取后端返回的真实局域网 IP (例如 192.168.3.67)
+          let realIp = res.data;
+
+          // 获取当前前端运行的端口 (例如 80 或 8080)
+          // 如果是 localhost 访问，port 为空时默认为 80，需要处理一下
+          let port = window.location.port ? ":" + window.location.port : "";
+
+          // 拼接协议 (http)
+          let protocol = window.location.protocol;
+
+          // 组合成手机可访问的 URL: http://192.168.3.67:80/show?id=...
+          // 这样即使你在浏览器输入 localhost，生成的二维码也是 192.168.x.x
+          let baseUrl = `${protocol}//${realIp}${port}`;
+          let content = `${baseUrl}/show?id=${this.queryParams.pid}`;
+
+          console.log("生成的二维码内容:", content);
+
+          // 3. 调用生成二维码接口
+          queryQTCode(content).then(qrRes => {
+            this.code_url = process.env.VUE_APP_BASE_API + qrRes.url;
+          });
+        });
+
+      }).catch(error => {
+        this.loading = false;
+        console.error(error);
       });
     },
+
+
   },
 };
 </script>

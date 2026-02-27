@@ -49,7 +49,7 @@ export const constantRoutes = [
   //新增路由
   {
     path:'/show',
-    component: () => import('@/views/show/show'),
+    component: () => import('@/views/show/show/index'),
     hidden: true
   },
   {
@@ -181,3 +181,5 @@ export default new Router({
   scrollBehavior: () => ({ y: 0 }),
   routes: constantRoutes
 })
+
+
