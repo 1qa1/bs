@@ -1,283 +1,195 @@
 <template>
-  <div class="app-container home">
-    <!--    聚合搜素平台-->
-    <el-container>
-      <el-main>
-        <br/>
-        <br/>
-        <!--        商品信息-->
-        <el-descriptions class="margin-top" title="商品信息" :column="3"  border>
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-user"></i>
-              上链ID
-            </template>
-            {{infoList.product.id}}
-          </el-descriptions-item>
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-mobile-phone"></i>
-              商品名
-            </template>
-            {{infoList.product.productName}}
-          </el-descriptions-item>
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-location-outline"></i>
-              商品规格
-            </template>
-            {{infoList.product.tp}}
-          </el-descriptions-item>
-
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-office-building"></i>
-              商品产地
-            </template>
-            {{infoList.product.plantCity}}
-          </el-descriptions-item>
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-office-building"></i>
-              商品唯一码
-            </template>
-            {{infoList.product.onlyCode}}
-          </el-descriptions-item>
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-office-building"></i>
-              上链时间戳
-            </template>
-            {{infoList.product.timeStamp}}
-          </el-descriptions-item>
-
-          <el-descriptions-item>
-            <template slot="label">
-              <i class="el-icon-office-building"></i>
-              上链Hash
-            </template>
-            {{infoList.product.txHash}}
-          </el-descriptions-item>
-        </el-descriptions>
-        <!--        种植端个人信息-->
-        <!--        grow / medicine /fertilizer -->
-        <br/>
-        <br/>
-        <h1> <b>作物生长信息</b></h1>
-        <el-table
-          :data="infoList.grow"
-          style="width: 100%"
-          height="200" >
-          <el-table-column  prop="id" label="种植信息上链ID"  width="200"> </el-table-column>
-          <el-table-column  prop="plantTime" label="种植时间"  width="200">  </el-table-column>
-          <el-table-column prop="reapTime"  label="成熟时间" width="200">  </el-table-column>
-          <!--            <el-table-column  prop="timeStamp"   label="时间戳"  width="300"> </el-table-column>-->
-          <el-table-column  prop="txHash"  label="上链Hash"  width="600">  </el-table-column>
-          <template slot="empty">
-            <el-empty ></el-empty>
-          </template>
-        </el-table>
-        <!--        用药信息-->
-        <br/>
-        <br/>
-        <h1> <b>用药信息</b></h1>
-        <el-table
-          :data="infoList.medicine"
-          style="width: 100%"
-          height="200" >
-          <el-table-column  prop="id" label="用药信息上链ID"  width="300"> </el-table-column>
-          <el-table-column  prop="name" label="用药名称"  width="100">  </el-table-column>
-          <el-table-column prop="useTime"  label="使用时间" width="200">  </el-table-column>
-          <el-table-column  prop="batchNo"   label="使用批次"  width="150"> </el-table-column>
-          <el-table-column  prop="amount"   label="使用数量"  width="100"> </el-table-column>
-          <!--          <el-table-column  prop="timeStamp"   label="交易时间戳"  width="200"> </el-table-column>-->
-          <!--          <el-table-column  prop="txHash"  label="上链Hash"  width="600">  </el-table-column>-->
-          <template slot="empty">
-            <el-empty ></el-empty>
-          </template>
-        </el-table>
-        <!--        肥料信息-->
-        <br/>
-        <br/>
-        <h1> <b>肥料/饲料信息</b></h1>
-        <el-table
-          :data="infoList.fertilizer"
-          style="width: 100%"
-          height="200" >
-          <el-table-column  prop="id" label="肥料/饲料信息上链ID"  width="280"> </el-table-column>
-          <el-table-column  prop="name" label="肥料/饲料名称"  width="200">  </el-table-column>
-          <el-table-column  prop="company" label="肥料/饲料公司"  width="200">  </el-table-column>
-          <el-table-column  prop="batchNo" label="肥料/饲料生产批号"  width="200">  </el-table-column>
-          <el-table-column prop="useTime"  label="肥料/饲料使用时间" width="200">  </el-table-column>
-          <!--          <el-table-column  prop="timeStamp"   label="时间戳"  width="300"> </el-table-column>-->
-          <!--          <el-table-column  prop="txHash"  label="上链Hash"  width="600">  </el-table-column>-->
-          <template slot="empty">
-            <el-empty ></el-empty>
-          </template>
-        </el-table>
-        <!--        种植端check 信息-->
-        <br/>
-        <br/>
-        <h1> <b>种养殖检测信息</b></h1>
-        <el-table :data="infoList.check"  style="width: 100%" height="200" >
-          <template slot="empty">
-            <el-empty ></el-empty>
-          </template>
-          <el-table-column prop="id" label="检查信息上链ID"  width="290"> </el-table-column>
-          <el-table-column  prop="projName"  label="检测项目"  width="200">  </el-table-column>
-          <el-table-column  prop="types"  label="检测类型"  width="200">  </el-table-column>
-          <el-table-column prop="result"  label="检测结果"   width="200"> </el-table-column>
-          <!--          <el-table-column  prop="timeStamp"  label="时间戳" width="300">  </el-table-column>-->
-          <!--          <el-table-column  prop="txHash"   label="上链Hash"  width="600"> </el-table-column>-->
-          <el-table-column prop="uploadsUrl"  label="检测报告"  width="200">
-            <template slot-scope="scope">
-              <el-button  size="mini" type="text" icon="el-icon-picture-outline-round"  @click="handleImages(scope.row)"
-              >点击查看检测报告</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <!--        日常巡查信息 -->
-        <br/><br/>
-        <h1> <b>日常监察信息</b></h1>
-        <el-table :data="infoList.routineCheck"  style="width: 100%" height="200" >
-          <template slot="empty">
-            <el-empty ></el-empty>
-          </template>
-          <el-table-column prop="id" label="检查信息上链ID"  width="300"> </el-table-column>
-          <el-table-column  prop="checkName"  label="日常巡查项目"  width="200">  </el-table-column>
-          <el-table-column  prop="problems"  label="检查问题"  width="200">  </el-table-column>
-          <el-table-column prop="proposal"  label="整改建议"   width="200"> </el-table-column>
-          <el-table-column  prop="orgMember"  label="参与人员" width="100">  </el-table-column>
-          <!--          <el-table-column  prop="txHash"   label="上链Hash"  width="600"> </el-table-column>-->
-          <!--          <el-table-column prop="timeStamp"  label="时间戳"   width="200"> </el-table-column>-->
-          <el-table-column prop="uploadsUrl"  label="检测报告"  width="200">
-            <template slot-scope="scope">
-              <el-button  size="mini" type="text" icon="el-icon-picture-outline-round"  @click="handleImages(scope.row)"
-              >点击查看检测报告</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <!--        官方巡查信息 -->
-        <br/><br/>
-        <h1> <b>官方监察信息</b></h1>
-        <el-table :data="infoList.officialCheck"  style="width: 100%" height="200" >
-          <template slot="empty">
-            <el-empty ></el-empty>
-          </template>
-          <el-table-column  prop="id" label="官方监察上链ID"  width="300"> </el-table-column>
-          <el-table-column  prop="reportTime"  label="检测时间"  width="200">  </el-table-column>
-          <el-table-column  prop="reportResult"  label="检测结果"  width="100">  </el-table-column>
-          <!--          <el-table-column prop="timeStamp"  label="上链时间戳"   width="200"> </el-table-column>-->
-          <!--          <el-table-column  prop="txHash"  label="上链Hash" width="300">  </el-table-column>-->
-          <el-table-column prop="reportUploadsUrl"  label="检测报告"  width="200">
-            <template slot-scope="scope">
-              <el-button  size="mini" type="text" icon="el-icon-picture-outline-round"  @click="handleOfficialImages(scope.row)"
-              >点击查看检测报告</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!--        溯源链条信息？？？-->
-        <!--        上链信息  -->
-
-        <!-- 显示图片的dialog-->
-        <el-dialog :title="title" :visible.sync="is_open" width="500px" append-to-body>
-          <div>
-            <el-image
-              style="align-content: center;width: 460px; height: 460px;"
-              :src="url">
-            </el-image>
+  <div class="app-container show-page">
+    <!-- 1. 顶部的产品核心信息卡片 -->
+    <el-card class="product-card" shadow="always">
+      <div slot="header" class="clearfix">
+        <span class="product-title">{{ infoList.product.productName || '商品信息' }}</span>
+      </div>
+      <el-descriptions :column="1" border size="small">
+        <el-descriptions-item>
+          <template slot="label"><i class="el-icon-price-tag"></i> 商品产地</template>
+          {{ infoList.product.plantCity }}
+        </el-descriptions-item>
+        <el-descriptions-item>
+          <template slot="label"><i class="el-icon-box"></i> 商品规格</template>
+          {{ infoList.product.tp }}
+        </el-descriptions-item>
+        <el-descriptions-item>
+          <template slot="label"><i class="el-icon-finished"></i> 唯一码</template>
+          {{ infoList.product.onlyCode }}
+        </el-descriptions-item>
+        <el-descriptions-item>
+          <template slot="label"><i class="el-icon-link"></i> 上链Hash</template>
+          <div class="hash-box">
+            <el-tooltip :content="infoList.product.txHash" placement="top">
+              <span class="hash-text">{{ truncateHash(infoList.product.txHash) }}</span>
+            </el-tooltip>
+            <i class="el-icon-document-copy copy-icon" @click="copyToClipboard(infoList.product.txHash)"></i>
           </div>
-          <div slot="footer" class="dialog-footer">
-            <el-button type="primary" @click="cancel()">确 定</el-button>
-            <el-button @click="cancel">取 消</el-button>
-          </div>
-        </el-dialog>
+        </el-descriptions-item>
+        <el-descriptions-item>
+          <template slot="label"><i class="el-icon-time"></i> 上链时间</template>
+          {{ infoList.product.timeStamp }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-card>
 
+    <!-- 2. 溯源时间线 -->
+    <div class="timeline-container">
+      <el-timeline>
+        <el-timeline-item
+          v-for="(event, index) in timelineEvents"
+          :key="index"
+          :icon="event.icon"
+          :type="event.type === '官方监察' ? 'danger' : 'primary'"
+          :color="event.color"
+          :size="'large'"
+          :timestamp="event.timestamp"
+          placement="top"
+        >
+          <el-card>
+            <h4>{{ event.title }}</h4>
+            <div v-for="(detail, dIndex) in event.details" :key="dIndex" class="detail-item">
+              <span class="detail-label">{{ detail.label }}:</span>
+              <!-- 普通文本 -->
+              <span v-if="!detail.isHash && !detail.isImage" class="detail-value">{{ detail.value }}</span>
+              <!-- 哈希值处理 -->
+              <div v-if="detail.isHash" class="hash-box">
+                <el-tooltip :content="detail.value" placement="top">
+                  <span class="hash-text">{{ truncateHash(detail.value) }}</span>
+                </el-tooltip>
+                <i class="el-icon-document-copy copy-icon" @click="copyToClipboard(detail.value)"></i>
+              </div>
+              <!-- 图片链接处理 -->
+              <el-button v-if="detail.isImage" size="mini" type="text" @click="handleImages(detail.value)">
+                点击查看报告 <i class="el-icon-picture-outline"></i>
+              </el-button>
+            </div>
+          </el-card>
+        </el-timeline-item>
+        <el-timeline-item v-if="timelineEvents.length === 0 && !loading" placement="top">
+          <el-empty description="暂无更多溯源信息"></el-empty>
+        </el-timeline-item>
+      </el-timeline>
+    </div>
 
-
-      </el-main>
-    </el-container>
-
+    <!-- 显示图片的dialog (保持不变) -->
+    <el-dialog :title="title" :visible.sync="is_open" width="90%" append-to-body>
+      <el-image style="width: 100%;" :src="url" fit="contain"></el-image>
+    </el-dialog>
   </div>
 </template>
 
-
 <script>
-import {listProduct} from  "@/api/plant/product";
-import {queryAllInformationByPid,queryQTCode} from "@/api/index/index";
+import { queryAllInformationByPid } from "@/api/index/index";
+
 export default {
-  name: "Index",
+  name: "Show",
   data() {
     return {
-      //code_url:"https://pic.imgdb.cn/item/63b0392a2bbf0e79942040fe.png",
-      code_url: require("@/assets/images/web.jpg"),
-      contents:"http://192.168.3.67/show?id=",
-      defaultProps: {
-        children: 'children',
-        label: 'label'
-      },
-      tables:{
-        label: '种植信息',
-
-      },
-      url:null,
-      is_open:false,
-      // 修改窗口的产品名称
-      pdName:null,
-      // 建议
-      suggestion:null,
-      product:{},
-      // 遮罩层
-      loading: false,
-      // 选中数组
-      ids: [],
-      // 非单个禁用
-      single: true,
-      // 非多个禁用
-      multiple: true,
-      // 显示搜索条件
-      showSearch: true,
-      // 总条数
-      total: 0,
-      // 弹出层标题
+      loading: true,
+      url: null,
+      is_open: false,
       title: "",
-      // 是否显示弹出层
-      open: false,
-      // 查询参数
       queryParams: {
-        pid:null,
+        pid: null,
       },
-      // 表单参数
-      form: {},
-      // 表单校验
-      rules: {
-      },
-      infoList:{
-        product:{id:null,plantCity:null,tp:null,productName:null,onlyCode:null,txHash:null,timeStamp:null}
+      infoList: {
+        product: { id: null, plantCity: null, tp: null, productName: null, onlyCode: null, txHash: null, timeStamp: null },
+        grow: [],
+        medicine: [],
+        fertilizer: [],
+        check: [],
+        routineCheck: [],
+        officialCheck: []
       },
     };
   },
+  computed: {
+    /**
+     * 【核心改造】
+     * 将所有分立的信息数组聚合成一个按时间排序的事件流数组
+     * 供 el-timeline 使用
+     */
+    timelineEvents() {
+      const events = [];
+      const { grow, medicine, fertilizer, check, routineCheck, officialCheck } = this.infoList;
+
+      if (grow && grow.length > 0) {
+        grow.forEach(item => events.push({
+          title: '作物生长', icon: 'el-icon-sunrise-1', color: '#67C23A', timestamp: item.plantTime,
+          details: [
+            { label: '成熟时间', value: item.reapTime },
+            { label: '上链Hash', value: item.txHash, isHash: true }
+          ]
+        }));
+      }
+      if (medicine && medicine.length > 0) {
+        medicine.forEach(item => events.push({
+          title: '用药记录', icon: 'el-icon-first-aid-kit', color: '#E6A23C', timestamp: item.useTime,
+          details: [
+            { label: '药品名称', value: item.name },
+            { label: '使用批次', value: item.batchNo },
+            { label: '使用数量', value: item.amount },
+          ]
+        }));
+      }
+      if (fertilizer && fertilizer.length > 0) {
+        fertilizer.forEach(item => events.push({
+          title: '施肥记录', icon: 'el-icon-pear', color: '#E6A23C', timestamp: item.useTime,
+          details: [
+            { label: '肥料名称', value: item.name },
+            { label: '生产公司', value: item.company },
+            { label: '生产批号', value: item.batchNo },
+          ]
+        }));
+      }
+      if (check && check.length > 0) {
+        check.forEach(item => events.push({
+          title: '种养殖检测', icon: 'el-icon-document-checked', color: '#409EFF', timestamp: item.timeStamp,
+          details: [
+            { label: '检测项目', value: item.projName },
+            { label: '检测类型', value: item.types },
+            { label: '检测结果', value: item.result },
+            { label: '检测报告', value: item.uploadsUrl, isImage: true },
+          ]
+        }));
+      }
+      if (routineCheck && routineCheck.length > 0) {
+        routineCheck.forEach(item => events.push({
+          title: '日常监察', icon: 'el-icon-view', color: '#409EFF', timestamp: item.checkTime,
+          details: [
+            { label: '巡查项目', value: item.checkName },
+            { label: '发现问题', value: item.problems },
+            { label: '整改建议', value: item.proposal },
+            { label: '参与人员', value: item.orgMember },
+            { label: '巡查报告', value: item.uploadsUrl, isImage: true },
+          ]
+        }));
+      }
+      if (officialCheck && officialCheck.length > 0) {
+        officialCheck.forEach(item => events.push({
+          title: '官方监察', type: 'danger', icon: 'el-icon-warning', color: '#F56C6C', timestamp: item.reportTime,
+          details: [
+            { label: '检测结果', value: item.reportResult },
+            { label: '检测报告', value: item.reportUploadsUrl, isImage: true },
+          ]
+        }));
+      }
+
+      // 按时间戳降序排序，最新的在最上面
+      return events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
+  },
   created() {
-    this.getProductList();
     this.getPageUrls();
   },
   mounted() {
     this.handleQuery();
   },
   methods: {
-
-    //获取url
-    /*getPageUrls(){
-      let ori_url = window.location.href;
-      let pid = ori_url.split("=")[1];
-      this.queryParams.pid = pid;
-    },*/
     getPageUrls() {
-      // Vue Router 会自动解析 URL 中的 query 参数
-      // 假设 URL 是 /show?id=xxx
       const pid = this.$route.query.id;
-
       if (pid) {
         this.queryParams.pid = pid;
       } else {
@@ -285,158 +197,121 @@ export default {
       }
     },
 
-    cancel() {
-      this.open = false;
-      this.is_open = false;
-      this.reset();
-    },
-
-    //查看检测报告
-    /*handleImages(row){
-      this.url = row.uploadsUrl;
-      this.url = this.url.replace("localhost","192.168.3.67");
-      this.is_open = true;
-      this.title = "查看检测报告";
-    },*/
-    handleImages(row){
-      // 建议直接使用后端返回的相对路径，配合 Vue 环境变量拼接
-      // 例如: this.url = process.env.VUE_APP_BASE_API + row.uploadsUrl;
-
-      // 如果必须替换 IP (不推荐，但为了兼容你现有逻辑):
-      this.url = row.uploadsUrl;
-      // 只有当 url 包含 localhost 时才替换，且替换为当前访问的 host，而不是写死 192.168.3.67
-      if(this.url && this.url.includes('localhost')) {
-        this.url = this.url.replace("localhost", window.location.hostname);
-      }
-
-      this.is_open = true;
-      this.title = "查看检测报告";
-    },
-
-    /*handleOfficialImages(row) {
-      this.url = row.reportUploadsUrl;
-      this.url = this.url.replace("localhost","192.168.3.67");
-      console.log(this.url);
-      this.is_open = true;
-      this.title = "查看检测报告";
-    },*/
-    handleOfficialImages(row) {
-      this.url = row.reportUploadsUrl;
-
-      // 动态替换 localhost 为当前访问的域名/IP，避免写死 192.168.3.67
-      // 这样无论手机通过什么 IP 访问，都能正确加载图片
-      if (this.url && this.url.includes('localhost')) {
-        this.url = this.url.replace("localhost", window.location.hostname);
-      }
-
-      this.is_open = true;
-      this.title = "查看检测报告";
-    },
-
-    /**得到product数据 */
-    /**这些是不需要改的部分*/
-    getProductList() {
-      this.loading = true;
-      listProduct().then( response => {
-        this.product = response.data;
-        this.loading = false;
-        var maps = []
-
-        for ( var i = 0 ; i < this.product.length ; i++){
-          var p = this.product[i];
-          maps.push({"value":p.productName,"id":p.id});
-        }
-        this.product = maps;
-      })
-    },
-    querySearch(queryString, cb) {
-      let medicines = this.product;
-      let results = queryString ? medicines.filter(this.createFilter(queryString)) : medicines;
-      // 调用 callback 返回建议列表的数据
-      cb(results);
-    },
-    createFilter(queryString) {
-      return (medicine) => {
-        return (medicine.value.toLowerCase().indexOf(queryString.toLowerCase()) === 0);
-      };
-    },
-    handleSelect(item) {
-      this.queryParams.pid = item.id;
-    },
-    selectChange(item) {
-      this.form.pid = item;
-    },
-
-    // 表单重置
-    reset() {
-      this.form = {
-
-      };
-      this.resetForm("form");
-    },
-    /** 重置按钮操作 */
-    resetQuery() {
-      this.resetForm("queryForm");
-      this.handleQuery();
-    },
-
-    /***
-     * ======================================这些是需要改的部分=================================================================
-     */
-    /** 搜索按钮操作 */
-    /*handleQuery(  ) {
-      this.queryParams.pageNum = 1;
-      this.loading = true;
-      queryAllInformationByPid( this.queryParams.pid ).then( response => {
-        console.log(response.data);
-        this.infoList = response.data;
-        this.loading = false;
-      });
-
-      let content  = this.contents + this.queryParams.pid;
-      queryQTCode(content).then( response => {
-        this.code_url = "http://localhost:8080" + response.url;
-        //this.code_url = "http://192.168.133.43:8080" + response.url;
-      })
-    },*/
-    /** 搜索按钮操作 */
     handleQuery() {
-      // 手机端只需要查询数据，不需要生成二维码
-      if (!this.queryParams.pid) {
-        return;
-      }
-
+      if (!this.queryParams.pid) return;
       this.loading = true;
       queryAllInformationByPid(this.queryParams.pid).then(response => {
-        console.log(response.data);
         this.infoList = response.data;
         this.loading = false;
       }).catch(() => {
         this.loading = false;
       });
-
-      // 【删除】手机端不需要下面这段生成二维码的代码，这会导致逻辑混乱
-      /*
-      let content  = this.contents + this.queryParams.pid;
-      queryQTCode(content).then( response => {
-        this.code_url = "http://localhost:8080" + response.url;
-      })
-      */
     },
 
+    /**
+     * 【新增】截断长哈希值，方便显示
+     */
+    truncateHash(hash, start = 6, end = 4) {
+      if (!hash || hash.length <= start + end) {
+        return hash || 'N/A';
+      }
+      return `${hash.substring(0, start)}...${hash.substring(hash.length - end)}`;
+    },
 
+    /**
+     * 【新增】复制文本到剪贴板
+     */
+    copyToClipboard(text) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+          this.$modal.msgSuccess('已复制');
+        }).catch(err => {
+          this.$modal.msgError('复制失败');
+        });
+      } else {
+        // 兼容旧版浏览器
+        const input = document.createElement('textarea');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        this.$modal.msgSuccess('已复制');
+      }
+    },
+
+    /**
+     * 【优化】统一的图片查看方法
+     */
+    handleImages(imageUrl) {
+      if (!imageUrl) {
+        this.$modal.msgWarning("无可用报告图片");
+        return;
+      }
+      this.url = imageUrl;
+      // 动态替换 localhost
+      if (this.url && this.url.includes('localhost')) {
+        this.url = this.url.replace("localhost", window.location.hostname);
+      }
+      this.is_open = true;
+      this.title = "查看报告";
+    },
   },
 };
 </script>
 
 <style scoped lang="scss">
-.home {
-  .el-form {
-    margin-top: 30px;
-    margin-left: 300px;
+.show-page {
+  padding: 10px;
+  background-color: #f4f4f5;
+}
+
+.product-card {
+  margin-bottom: 20px;
+  .product-title {
+    font-weight: bold;
+    font-size: 18px;
   }
 }
 
+.timeline-container {
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 4px;
+}
 
+.detail-item {
+  font-size: 14px;
+  line-height: 1.8;
+  .detail-label {
+    font-weight: bold;
+    color: #606266;
+    margin-right: 8px;
+  }
+  .detail-value {
+    color: #303133;
+  }
+}
+
+.hash-box {
+  display: flex;
+  align-items: center;
+  .hash-text {
+    color: #409EFF;
+    cursor: pointer;
+  }
+  .copy-icon {
+    margin-left: 8px;
+    cursor: pointer;
+    color: #909399;
+    &:hover {
+      color: #409EFF;
+    }
+  }
+}
+
+// 优化 el-descriptions 在移动端的样式
+::v-deep .el-descriptions-item__label {
+  width: 100px; // 固定标签宽度
+}
 </style>
-

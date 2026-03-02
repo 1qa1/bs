@@ -90,6 +90,12 @@ spring:
         max-active: 8
         # #连接池最大阻塞等待时间（使用负值表示没有限制）
         max-wait: -1ms
+  jackson:
+    # 1. 设定日期格式：后端返回给前端时，自动转为这种字符串，不再是 UTC 的 T...Z 格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    # 2. 设定时区：关键！强制使用东八区（北京时间）
+    # 这样前端传来的 UTC 时间 (少8小时)，后端会自动 +8小时 补回来
+    time-zone: GMT+8
 
 # token配置
 token:

@@ -213,7 +213,7 @@ public class SysAgriMergeSearchController {
         return results;
     }
 
-    @GetMapping("/{id}")
+    /*@GetMapping("/{id}")
     public AjaxResult mergeSearch( @PathVariable("id") String pid) throws GatewayException {
 
         List<AgriCheck> dbChecks = checkService.selectCheckByPid(pid);
@@ -231,6 +231,61 @@ public class SysAgriMergeSearchController {
         AgriTx tx = txService.selectAgriTxByPid(bcProduct.getID());
         bcProduct.setTxHash(tx.getTxid());
         bcProduct.setTimeStamp(tx.getTimestamp());
+        List<AgriBCCheck> batchChecks = getBatchChecks(checkService, dbChecks);
+        List<AgriBCFertilizer> batchFertilizers = getBatchFertilizers(fertilizerService, dbFertilizers);
+        List<AgriBCGrow> batchGrows = getBatchGrows(growService, dbGrows);
+        List<AgriBCMedicine> batchMedicines = getBatchMedicines(medicineService, dbMedicines);
+        List<AgriBCRoutineCheck> batchRoutines = getBatchRoutines(routineService, dbRoutines);
+        List<AgriBCSell> batchSells = getBatchSells(sellService, dbSells);
+        List<AgriBCTransport> batchTransports = getBatchTransports(transportService, dbTransports);
+        List<AgriBCOfficialCheck> batchOfficialChecks = getBatchOfficialChecks(officialService, dbOfficials);
+
+        AgriMergeResult result = new AgriMergeResult(bcProduct,batchChecks,batchFertilizers,batchGrows,batchMedicines,batchOfficialChecks,batchRoutines,batchSells,batchTransports);
+        return AjaxResult.success(result);
+
+    }*/
+    @GetMapping("/{id}")
+    public AjaxResult mergeSearch( @PathVariable("id") String pid) throws GatewayException {
+
+        List<AgriCheck> dbChecks = checkService.selectCheckByPid(pid);
+
+        // --- 核心修改开始：肥料查询兜底逻辑 ---
+        // 1. 优先尝试按 GID (批次号) 查询
+        List<AgriFertilizer> dbFertilizers = fertilizerService.selectFertilizerByGid(pid);
+        // 2. 如果按 GID 查不到，尝试按 PID (产品号) 查询
+        if (dbFertilizers == null || dbFertilizers.isEmpty()) {
+            AgriFertilizer searchParam = new AgriFertilizer();
+            searchParam.setPid(pid);
+            dbFertilizers = fertilizerService.selectAgriFertilizerList(searchParam);
+        }
+        // --- 核心修改结束 ---
+
+        // --- 核心修改开始：用药查询兜底逻辑 ---
+        // 1. 优先尝试按 GID (批次号) 查询
+        List<AgriMedicine> dbMedicines = medicineService.selectMedicineByGid(pid);
+        // 2. 如果按 GID 查不到，尝试按 PID (产品号) 查询
+        if (dbMedicines == null || dbMedicines.isEmpty()) {
+            dbMedicines = medicineService.selectMedicineByPid(pid);
+        }
+        // --- 核心修改结束 ---
+
+        List<AgriOfficial> dbOfficials = officialService.selectOfficialByPid(pid);
+        List<AgriGrow> dbGrows = growService.selectGrowByPid(pid);
+        List<AgriRoutine> dbRoutines = routineService.selectRoutineByPid(pid);
+        List<AgriSell> dbSells = sellService.selectSellByPid(pid);
+        List<AgriTransport> dbTransports = transportService.selectTransportByPid(pid);
+
+
+//        从区块链上取数据
+        AgriBCProduct bcProduct = productService.queryProduct(pid);
+        if (bcProduct != null) {
+            AgriTx tx = txService.selectAgriTxByPid(bcProduct.getID());
+            if (tx != null) {
+                bcProduct.setTxHash(tx.getTxid());
+                bcProduct.setTimeStamp(tx.getTimestamp());
+            }
+        }
+
         List<AgriBCCheck> batchChecks = getBatchChecks(checkService, dbChecks);
         List<AgriBCFertilizer> batchFertilizers = getBatchFertilizers(fertilizerService, dbFertilizers);
         List<AgriBCGrow> batchGrows = getBatchGrows(growService, dbGrows);

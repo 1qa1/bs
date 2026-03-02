@@ -139,6 +139,17 @@
         </template>
       </el-table-column>
 
+      <el-table-column label="溯源二维码" align="center" width="120">
+        <template slot-scope="scope">
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-picture"
+            @click="handleViewCode(scope.row)"
+          >查看二维码</el-button>
+        </template>
+      </el-table-column>
+
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
@@ -194,11 +205,31 @@
         <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
+
+    <!-- 【新增】二维码显示弹窗 -->
+    <el-dialog title="产品溯源二维码" :visible.sync="codeOpen" width="400px" append-to-body>
+      <div style="text-align: center;" v-loading="codeLoading">
+        <el-image :src="codeUrl" style="width: 250px; height: 250px;">
+          <div slot="error" class="image-slot">
+            <i class="el-icon-picture-outline"></i> 加载失败
+          </div>
+        </el-image>
+        <div style="margin-top: 15px; font-size: 14px; color: #606266;">
+          请使用手机扫描上方二维码查看溯源信息
+        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="codeOpen = false">关 闭</el-button>
+      </div>
+    </el-dialog>
+
   </div>
 </template>
 
 <script>
 import { listProduct, addProduct, delProduct, updateProduct, getProduct } from "@/api/plant/product";
+// 【新增】引入生成二维码和获取IP的接口 (路径参考了你的 index.vue)
+import { queryQTCode, getServerIp } from "@/api/index/index";
 
 export default {
   name: "product",
@@ -225,6 +256,10 @@ export default {
       productList: [],
       // 新增：轮询定时器
       refreshTimer: null,
+      // 【新增】二维码弹窗相关变量
+      codeOpen: false,
+      codeUrl: "",
+      codeLoading: false,
     };
   },
   created() {
@@ -496,6 +531,47 @@ export default {
       }
       return uuid.join('')
     },
+    /**
+     * 【新增】查看二维码操作
+     * 动态获取服务器IP并生成当前产品的溯源链接二维码
+     */
+    handleViewCode(row) {
+      this.codeOpen = true;
+      this.codeLoading = true;
+      this.codeUrl = ""; // 清空旧图片
+
+      // 1. 获取服务器真实 IP (确保手机在同一局域网能访问)
+      getServerIp().then(res => {
+        let realIp = res.data;
+
+        // 获取端口和协议
+        let port = window.location.port ? ":" + window.location.port : "";
+        let protocol = window.location.protocol;
+
+        // 组合基础 URL: http://192.168.x.x:8080
+        let baseUrl = `${protocol}//${realIp}${port}`;
+
+        // 组合完整溯源链接: /show?id=UUID
+        // 注意：这里使用 row.pid (产品的UUID)
+        let content = `${baseUrl}/show?id=${row.pid}`;
+
+        console.log("生成二维码内容:", content);
+
+        // 2. 调用后端接口生成二维码图片
+        queryQTCode(content).then(qrRes => {
+          // 拼接后端图片路径
+          this.codeUrl = process.env.VUE_APP_BASE_API + qrRes.url;
+          this.codeLoading = false;
+        }).catch(() => {
+          this.codeLoading = false;
+          this.$modal.msgError("二维码生成失败");
+        });
+      }).catch(() => {
+        this.codeLoading = false;
+        this.$modal.msgError("无法获取服务器IP");
+      });
+    },
+
   }
 };
 </script>

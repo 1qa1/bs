@@ -472,6 +472,9 @@ export default {
 
       // 1. 查询商品详细信息
       queryAllInformationByPid(this.queryParams.pid).then(response => {
+        console.log("首页查询结果:", response.data);
+        console.log("用药信息:", response.data.medicine);
+        console.log("肥料信息:", response.data.fertilizer);
         this.infoList = response.data;
         this.loading = false;
 
